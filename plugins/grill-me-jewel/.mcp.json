@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "grill_me_jewel_ui": {
+    "jewel_buddy_ui": {
       "command": "node",
-      "args": ["./mcp/server.mjs", "--stdio"]
+      "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/server.mjs", "--stdio"]
     }
   }
 }

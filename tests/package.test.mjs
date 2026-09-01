@@ -6,49 +6,39 @@ import test from "node:test";
 const ROOT = resolve(import.meta.dirname, "..");
 const PLUGIN = resolve(ROOT, "plugins/grill-me-jewel");
 
-test("marketplace and plugin identities are aligned", () => {
-  const market = JSON.parse(readFileSync(resolve(ROOT, ".agents/plugins/marketplace.json"), "utf8"));
-  const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codex-plugin/plugin.json"), "utf8"));
-  assert.equal(market.name, "grill-me-jewel");
-  assert.equal(market.plugins.length, 1);
-  assert.equal(market.plugins[0].name, "grill-me-jewel");
-  assert.equal(manifest.name, "grill-me-jewel");
-  assert.equal(manifest.version, "0.2.0");
+test("WorkBuddy plugin manifest and MCP identity are aligned", () => {
+  const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
+  const mcp = JSON.parse(readFileSync(resolve(PLUGIN, ".mcp.json"), "utf8"));
+  assert.equal(manifest.name, "jewel-buddy");
+  assert.equal(manifest.version, "0.1.0");
   assert.equal(manifest.license, "Apache-2.0");
-  assert.equal(manifest.interface.developerName, "苏哇科技");
-  assert.equal(manifest.interface.composerIcon, "./assets/brand/logo-static.png");
-  assert.ok(existsSync(resolve(PLUGIN, manifest.interface.composerIcon)));
+  assert.deepEqual(Object.keys(mcp.mcpServers), ["jewel_buddy_ui"]);
+  assert.match(mcp.mcpServers.jewel_buddy_ui.args[0], /CODEBUDDY_PLUGIN_ROOT/);
 });
 
-test("the plugin contains exactly one public skill", () => {
+test("the plugin contains one WorkBuddy skill with interview and image handoff rules", () => {
   const skillRoot = resolve(PLUGIN, "skills");
-  const skills = readdirSync(skillRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory() && existsSync(resolve(skillRoot, entry.name, "SKILL.md")));
+  const skills = readdirSync(skillRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(resolve(skillRoot, entry.name, "SKILL.md")));
   assert.deepEqual(skills.map(({ name }) => name), ["grill-me-jewel"]);
   const skill = readFileSync(resolve(skillRoot, "grill-me-jewel/SKILL.md"), "utf8");
+  assert.match(skill, /name: jewel-buddy/);
   assert.match(skill, /ask_grill_me_questions/);
-  assert.match(skill, /gpt-image-2/);
-  assert.match(skill, /\$imagegen/);
+  assert.match(skill, /image-generation tool available in WorkBuddy/);
   assert.match(skill, /four discovery stages/);
   assert.match(skill, /delivery_count/);
   assert.match(skill, /at least three visible design axes/);
+  assert.doesNotMatch(skill, /\$imagegen|gpt-image-2|Codex/);
 });
 
-test("the standalone package has no unrelated repository dependency", () => {
+test("the active WorkBuddy surface has no OpenAI host bridge dependency", () => {
   const files = [
-    resolve(PLUGIN, ".codex-plugin/plugin.json"),
+    resolve(PLUGIN, ".codebuddy-plugin/plugin.json"),
+    resolve(PLUGIN, ".mcp.json"),
+    resolve(PLUGIN, "mcp/server.mjs"),
+    resolve(PLUGIN, "mcp/interview.html"),
     resolve(PLUGIN, "skills/grill-me-jewel/SKILL.md"),
-    resolve(PLUGIN, "skills/grill-me-jewel/references/design-frontier.md"),
   ];
   const joined = files.map((file) => readFileSync(file, "utf8")).join("\n");
-  const unrelatedRepositoryNames = new RegExp(["Jewelry", "Design", "Codex|SVT", "-Jewelry"].join(""));
-  assert.doesNotMatch(joined, unrelatedRepositoryNames);
-});
-
-test("README exposes permanent install and update prompts", () => {
-  const readme = readFileSync(resolve(ROOT, "README.md"), "utf8");
-  assert.match(readme, /\/INSTALL\.md to install and verify GrillMeJewel/);
-  assert.match(readme, /\/UPDATE\.md to safely update and verify my existing GrillMeJewel installation/);
-  const update = readFileSync(resolve(ROOT, "UPDATE.md"), "utf8");
-  assert.match(update, /--branch v0\.2\.0/);
-  assert.match(update, /rolledBack/);
+  assert.doesNotMatch(joined, /window\.openai|openai\/outputTemplate|\.codex-plugin/);
 });

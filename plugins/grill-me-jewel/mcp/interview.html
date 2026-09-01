@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Grill Me 珠宝</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; img-src data: blob:; style-src 'unsafe-inline'">
+  <title>Jewel Buddy</title>
   <style>
     :root{color-scheme:light dark;--ink:#151515;--muted:#707070;--line:color-mix(in srgb,currentColor 13%,transparent);--panel:color-mix(in srgb,currentColor 4%,transparent);--gold:#b88a35}
     *{box-sizing:border-box}html,body{margin:0;overflow:hidden;background:transparent;font:15px/1.45 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
@@ -17,35 +18,74 @@
   </style>
 </head>
 <body>
-  <main class="app" id="app"><section class="loading" id="loading"><div class="mark">GMJ</div><div>正在载入访谈问题…</div></section></main>
-  <script>
+  <main class="app" id="app"><section class="loading" id="loading"><div class="mark">JB</div><div>正在载入访谈问题…</div></section></main>
+  <script type="module">
   (()=>{
     "use strict";
-    const UI_VERSION="2026-01-26";let active=null,index=0,answers={},otherText={},connected=false,seq=1;const pending=new Map();
-    const app=document.getElementById("app");
-    const send=(message)=>window.parent.postMessage(message,"*");
-    const request=(method,params)=>new Promise((resolve,reject)=>{const id=seq++;pending.set(id,{resolve,reject});send({jsonrpc:"2.0",id,method,params})});
-    const notify=(method,params)=>send({jsonrpc:"2.0",method,params});
-    const resize=()=>requestAnimationFrame(()=>notify("ui/notifications/size-changed",{width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}));
-    new ResizeObserver(resize).observe(document.body);
+    class WorkBuddyBridge{
+      constructor({name,version,autoResize=false}){this.name=name;this.version=version;this.autoResize=autoResize;this.seq=1;this.pending=new Map();this.hostContext={};window.addEventListener("message",event=>this.receive(event));}
+      send(message){window.parent.postMessage(message,"*")}
+      request(method,params){return new Promise((resolve,reject)=>{const id=this.seq++;this.pending.set(id,{resolve,reject});this.send({jsonrpc:"2.0",id,method,params})})}
+      notify(method,params){this.send({jsonrpc:"2.0",method,params})}
+      updateModelContext(params){return this.request("ui/update-model-context",params)}
+      sendMessage(params){return this.request("ui/message",params)}
+      receive(event){if(event.source!==window.parent)return;const message=event.data;if(!message||message.jsonrpc!=="2.0")return;if(message.id!==undefined&&this.pending.has(message.id)){const pending=this.pending.get(message.id);this.pending.delete(message.id);message.error?pending.reject(new Error(message.error.message)):pending.resolve(message.result);return}if(message.method==="ui/notifications/tool-result")this.ontoolresult?.(message.params);else if(message.method==="ui/notifications/tool-input")this.ontoolinput?.(message.params);else if(message.method==="ui/notifications/host-context-changed"){this.hostContext={...this.hostContext,...message.params};this.onhostcontextchanged?.(this.hostContext)}}
+      async connect(){const result=await this.request("ui/initialize",{appInfo:{name:this.name,version:this.version},appCapabilities:{availableDisplayModes:["inline"]},protocolVersion:"2026-01-26"});this.hostContext=result?.hostContext||{};this.notify("ui/notifications/initialized",{});if(this.autoResize){const resize=()=>requestAnimationFrame(()=>this.notify("ui/notifications/size-changed",{width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}));new ResizeObserver(resize).observe(document.body)}return result}
+    }
+    let active=null,index=0,answers={},otherText={},submitting=false;
+    const root=document.getElementById("app");
+    const app=new WorkBuddyBridge({name:"jewel-buddy-interview",version:"0.1.0",autoResize:true});
     const parse=(value,depth=0)=>{if(depth>8||value==null)return null;if(typeof value==="string"){try{return parse(JSON.parse(value),depth+1)}catch{return null}}if(Array.isArray(value)){for(const item of value){const found=parse(item,depth+1);if(found)return found}return null}if(typeof value!=="object")return null;if(value.interview?.questions)return value.interview;if(value.structuredContent)return parse(value.structuredContent,depth+1);if(value.result)return parse(value.result,depth+1);if(value.content)return parse(value.content,depth+1);if(value.text)return parse(value.text,depth+1);return null};
     const toolError=(value,depth=0)=>{if(depth>8||value==null)return "";if(typeof value==="string"){try{return toolError(JSON.parse(value),depth+1)}catch{return ""}}if(Array.isArray(value)){for(const item of value){const found=toolError(item,depth+1);if(found)return found}return ""}if(typeof value!=="object")return "";if(value.isError){const message=Array.isArray(value.content)?value.content.find(item=>item?.type==="text")?.text:"";return message||value.error?.message||"表单载入失败。"}for(const key of ["result","structuredContent","content","text"]){const found=toolError(value[key],depth+1);if(found)return found}return ""};
-    const terminal=(message)=>{active=null;app.innerHTML=`<section class="loading"><div class="mark">GMJ</div><div>${escapeHtml(message)}</div></section>`;resize()};
+    const terminal=(message)=>{active=null;root.innerHTML=`<section class="loading"><div class="mark">JB</div><div>${escapeHtml(message)}</div></section>`};
     const escapeHtml=(s)=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
     const hasAnswer=(q)=>q.type==="multi"?Array.isArray(answers[q.id])&&answers[q.id].length>0:String(answers[q.id]??"").trim().length>0;
     function optionMarkup(q,o){const checked=q.type==="multi"?(answers[q.id]||[]).includes(o.value):answers[q.id]===o.value;return `<label class="option"><input type="${q.type==="multi"?"checkbox":"radio"}" name="${escapeHtml(q.id)}" value="${escapeHtml(o.value)}" ${checked?"checked":""}><span><b>${escapeHtml(o.label)}</b>${o.description?`<small>${escapeHtml(o.description)}</small>`:""}</span></label>`}
-    function render(){if(!active)return;const q=active.questions[index];const selectedOther=q.type==="multi"?(answers[q.id]||[]).includes("other"):answers[q.id]==="other";const roundProgress=active.stage==="confirmation"?"Brief 确认":`探索 ${Math.min(active.round,active.minimumDiscoveryRounds)} / ${active.minimumDiscoveryRounds}`;app.innerHTML=`<header><div><div class="eyebrow">Suwa Technology · ${escapeHtml(active.stageLabel)} · 第 ${active.round} 轮</div><h1 class="title">${escapeHtml(active.title)}</h1>${active.intro?`<div class="intro">${escapeHtml(active.intro)}</div>`:""}</div><div class="progress">${roundProgress}<br>${index+1} / ${active.questions.length}</div></header><div class="bar"><i style="width:${((index+1)/active.questions.length)*100}%"></i></div><fieldset><legend>${escapeHtml(q.label)}${q.required?'<span class="required">必答</span>':""}</legend>${q.help?`<div class="help">${escapeHtml(q.help)}</div>`:""}${q.type==="text"?`<textarea id="textAnswer" maxlength="800" placeholder="${escapeHtml(q.placeholder||"请写下你的想法")}">${escapeHtml(answers[q.id]||"")}</textarea>`:`<div class="options">${q.options.map(o=>optionMarkup(q,o)).join("")}</div>${selectedOther?`<input class="other" id="otherAnswer" maxlength="160" placeholder="请补充具体方向" value="${escapeHtml(otherText[q.id]||"")}">`:""}`}<div class="error" id="error"></div></fieldset><footer><button class="ghost" id="back" ${index===0?"disabled":""}>上一题</button><div class="actions">${index<active.questions.length-1?'<button class="primary" id="next">下一题</button>':`<button class="primary" id="submit">${escapeHtml(active.submitLabel)}</button>`}</div></footer>`;
-      bind(q);resize();
+    function render(){if(!active)return;const q=active.questions[index];const selectedOther=q.type==="multi"?(answers[q.id]||[]).includes("other"):answers[q.id]==="other";const roundProgress=active.stage==="confirmation"?"Brief 确认":`探索 ${Math.min(active.round,active.minimumDiscoveryRounds)} / ${active.minimumDiscoveryRounds}`;root.innerHTML=`<header><div><div class="eyebrow">WorkBuddy · ${escapeHtml(active.stageLabel)} · 第 ${active.round} 轮</div><h1 class="title">${escapeHtml(active.title)}</h1>${active.intro?`<div class="intro">${escapeHtml(active.intro)}</div>`:""}</div><div class="progress">${roundProgress}<br>${index+1} / ${active.questions.length}</div></header><div class="bar"><i style="width:${((index+1)/active.questions.length)*100}%"></i></div><fieldset><legend>${escapeHtml(q.label)}${q.required?'<span class="required">必答</span>':""}</legend>${q.help?`<div class="help">${escapeHtml(q.help)}</div>`:""}${q.type==="text"?`<textarea id="textAnswer" maxlength="800" placeholder="${escapeHtml(q.placeholder||"请写下你的想法")}">${escapeHtml(answers[q.id]||"")}</textarea>`:`<div class="options">${q.options.map(o=>optionMarkup(q,o)).join("")}</div>${selectedOther?`<input class="other" id="otherAnswer" maxlength="160" placeholder="请补充具体方向" value="${escapeHtml(otherText[q.id]||"")}">`:""}`}<div class="error" id="error"></div></fieldset><footer><button class="ghost" id="back" ${index===0?"disabled":""}>上一题</button><div class="actions">${index<active.questions.length-1?'<button class="primary" id="next">下一题</button>':`<button class="primary" id="submit">${escapeHtml(active.submitLabel)}</button>`}</div></footer>`;
+      bind(q);
     }
     function bind(q){if(q.type==="text")document.getElementById("textAnswer").addEventListener("input",e=>answers[q.id]=e.target.value);else document.querySelectorAll(`input[name="${CSS.escape(q.id)}"]`).forEach(input=>input.addEventListener("change",e=>{if(q.type==="multi"){const set=new Set(answers[q.id]||[]);e.target.checked?set.add(e.target.value):set.delete(e.target.value);answers[q.id]=[...set]}else answers[q.id]=e.target.value;render()}));document.getElementById("otherAnswer")?.addEventListener("input",e=>otherText[q.id]=e.target.value);document.getElementById("back").onclick=()=>{if(index>0){index--;render()}};document.getElementById("next")?.addEventListener("click",()=>{if(validate(q)){index++;render()}});document.getElementById("submit")?.addEventListener("click",()=>{if(validate(q))submit()})}
     function validationMessage(q){if(q.required&&!hasAnswer(q))return "请先完成这一题。";const selected=q.type==="multi"?(answers[q.id]||[]).includes("other"):answers[q.id]==="other";if(selected&&!String(otherText[q.id]||"").trim())return "请补充“其他”的具体内容。";return ""}
     function validate(q){const message=validationMessage(q);document.getElementById("error").textContent=message;return !message}
     const answerLabel=(q)=>{const raw=answers[q.id];if(q.type==="text")return String(raw||"").trim();const values=Array.isArray(raw)?raw:[raw];return values.filter(Boolean).map(v=>v==="other"?`其他：${String(otherText[q.id]||"").trim()}`:(q.options.find(o=>o.value===v)?.label||v)).join("、")};
-    async function submit(){const invalid=active.questions.findIndex(q=>validationMessage(q));if(invalid>=0){index=invalid;render();document.getElementById("error").textContent=validationMessage(active.questions[invalid]);return}const payload={schemaVersion:2,round:active.round,stage:active.stage,minimumDiscoveryRounds:active.minimumDiscoveryRounds,answers:active.questions.map(q=>({id:q.id,value:answers[q.id]??(q.type==="multi"?[]:""),...(otherText[q.id]?{otherText:otherText[q.id]}:{})}))};const summary=active.questions.map(q=>`- ${q.label}：${answerLabel(q)||"未填写"}`).join("\n");const message=`已完成 Grill Me 珠宝第 ${active.round} 轮【${active.stageLabel}】。\n${summary}\nCurrent widget context (JSON): ${JSON.stringify(payload)}`;try{if(connected){await request("ui/message",{role:"user",content:[{type:"text",text:message}]})}else if(window.openai?.sendFollowUpMessage){await window.openai.sendFollowUpMessage({prompt:message})}else throw new Error("host message capability unavailable");app.innerHTML='<section class="submitted"><div class="mark">GMJ</div><h2>本阶段已提交</h2><p>我会保留本轮回答，继续下一个设计阶段。</p></section>';resize()}catch(e){document.getElementById("error").textContent="提交失败，请重试。"}}
-    function accept(value){const candidate=parse(value);if(!candidate)return false;if(!Array.isArray(candidate.questions)||candidate.questions.length<1){terminal("访谈问题不完整，请重新发起。");return true}active=candidate;index=0;answers={};otherText={};render();return true}
-    window.addEventListener("message",event=>{if(event.source!==window.parent)return;const m=event.data;if(!m||m.jsonrpc!=="2.0")return;if(m.id!==undefined&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(new Error(m.error.message)):p.resolve(m.result);return}if(m.method==="ui/notifications/tool-result"){const message=toolError(m.params);if(message){terminal(message);return}if(!accept(m.params))terminal("访谈问题不完整，请重新发起。")}if(m.method==="ui/notifications/tool-input"&&m.params?.arguments?.interview)accept(m.params.arguments)});
-    async function connect(){try{const result=await request("ui/initialize",{appInfo:{name:"grill-me-jewel-interview",version:"0.2.0"},appCapabilities:{availableDisplayModes:["inline"]},protocolVersion:UI_VERSION});connected=Boolean(result?.hostCapabilities?.message?.text);notify("ui/notifications/initialized",{})}catch{}if(!active){const message=toolError(window.openai?.toolOutput);if(message)terminal(message);else accept(window.openai?.toolOutput)}}
-    connect();setTimeout(()=>{if(!active)terminal("没有收到访谈问题，请重新调用 Grill Me 珠宝表单。")},9000);
+    async function submit(){
+      if(submitting)return;
+      const invalid=active.questions.findIndex(q=>validationMessage(q));
+      if(invalid>=0){index=invalid;render();document.getElementById("error").textContent=validationMessage(active.questions[invalid]);return}
+      submitting=true;
+      const submitButton=document.getElementById("submit");
+      if(submitButton)submitButton.disabled=true;
+      const payload={schemaVersion:2,round:active.round,stage:active.stage,minimumDiscoveryRounds:active.minimumDiscoveryRounds,answers:active.questions.map(q=>({id:q.id,value:answers[q.id]??(q.type==="multi"?[]:""),...(otherText[q.id]?{otherText:otherText[q.id]}:{})}))};
+      const summary=active.questions.map(q=>`- ${q.label}：${answerLabel(q)||"未填写"}`).join("\n");
+      const nextInstruction=active.stage==="confirmation"
+        ?"请读取本轮确认结果：如果 brief 已确认，立即使用 WorkBuddy 当前可用的图片生成能力，按约定数量生成独立珠宝设计图并在主对话中展示；如果用户要求修改，请先修订 brief 并再次确认。"
+        :"请保留本轮回答，继续 Jewel Buddy 的下一个未完成阶段，不要重复询问已经确认的事实。";
+      const message=`已完成 Jewel Buddy 第 ${active.round} 轮【${active.stageLabel}】。\n${summary}\n${nextInstruction}\nCurrent widget context (JSON): ${JSON.stringify(payload)}`;
+      try{
+        await app.updateModelContext({
+          content:[{type:"text",text:`Jewel Buddy widget 第 ${active.round} 轮已提交。${summary}`}],
+          structuredContent:{jewelBuddySubmission:payload},
+        }).catch(()=>{});
+        const messageResult=await app.sendMessage({
+          role:"user",
+          content:[{type:"text",text:message}],
+          _meta:{"codebuddy.ai/sendMessageMode":"send"},
+        });
+        if(messageResult?.isError)throw new Error("WorkBuddy rejected ui/message");
+        root.innerHTML=`<section class="submitted"><div class="mark">JB</div><h2>已发送到 WorkBuddy</h2><p>${active.stage==="confirmation"?"正在请求主对话确认并生成设计图。":"主对话会保留答案并继续下一阶段。"}</p></section>`;
+      }catch(e){
+        submitting=false;
+        if(submitButton)submitButton.disabled=false;
+        document.getElementById("error").textContent="提交到 WorkBuddy 失败，请重试。";
+      }
+    }
+    function accept(value){const candidate=parse(value);if(!candidate)return false;if(!Array.isArray(candidate.questions)||candidate.questions.length<1){terminal("访谈问题不完整，请重新发起。");return true}active=candidate;index=0;answers={};otherText={};submitting=false;render();return true}
+    const applyTheme=(theme)=>{if(!theme)return;document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme};
+    app.ontoolresult=(result)=>{const message=toolError(result);if(message){terminal(message);return}if(!accept(result))terminal("访谈问题不完整，请重新发起。")};
+    app.ontoolinput=(input)=>accept(input?.arguments?.interview??input?.arguments);
+    app.onhostcontextchanged=(context)=>applyTheme(context?.theme);
+    app.connect().then(()=>applyTheme(app.hostContext?.theme)).catch(()=>terminal("无法连接 WorkBuddy Apps UI，请检查 MCP 配置。"));
+    setTimeout(()=>{if(!active)terminal("没有收到访谈问题，请重新调用 Jewel Buddy 表单。")},9000);
   })();
   </script>
 </body>

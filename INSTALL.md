@@ -1,174 +1,45 @@
-# Install GrillMeJewel
+# Install Jewel Buddy in WorkBuddy
 
-This is an executable Runbook for Codex. Read it completely before changing the machine.
+## Prerequisites
 
-## Objective
+- Node.js 20+
+- WorkBuddy / CodeBuddy CLI 已安装并登录
+- 使用 Web UI（`--serve`）或 IDE 内嵌 Web UI；终端 TUI 不渲染 MCP Apps
+- 如需最终出图，当前 WorkBuddy 会话必须有一个真实可用的图片生成工具
 
-Install the official `grill-me-jewel@grill-me-jewel` plugin from
-`yuyou-dev/GrillMeJewel` at release `v0.2.0`, verify its Skill and local Apps UI MCP, then ask the
-user to restart Codex and start a new Grill Me Jewel task.
+## Validate and run locally
 
-## Safety Rules
+在仓库根目录执行：
 
-- Continue only in a local Codex Desktop environment. Stop in web, remote, or cloud-only sessions.
-- Do not request, print, copy, or inspect API keys, `auth.json`, private configuration, or unrelated files.
-- Ask before installing system software or opening an installer. Never use silent administrator or sudo operations.
-- Do not edit personal marketplace JSON or Codex configuration by hand.
-- Treat an existing marketplace named `grill-me-jewel` that points elsewhere as a conflict; stop instead of overwriting it.
-- Do not claim the current task loaded the plugin. Installation is complete only after verification;
-  usage requires a full Codex restart and a new task.
-
-## 1. Host Gate
-
-Confirm the host is macOS or native Windows and that Codex Desktop is installed. On unsupported
-hosts, stop and report the exact boundary.
-
-Locate the desktop-bundled Codex CLI before using a random PATH version.
-
-Common macOS candidates:
-
-```text
-/Applications/ChatGPT.app/Contents/Resources/codex
-/Applications/Codex.app/Contents/Resources/codex
+```bash
+npm test
+codebuddy plugin validate ./plugins/grill-me-jewel
+codebuddy --plugin-dir ./plugins/grill-me-jewel --serve
 ```
 
-On Windows, inspect the current user's `LOCALAPPDATA` and `ProgramFiles` for the ChatGPT/Codex
-application resources, then fall back to `codex.exe` on PATH. Store the resolved path as
-`CODEX_BIN` for this installation session; do not modify global shell configuration.
+插件通过 `.mcp.json` 启动 `jewel_buddy_ui`。如果你修改了插件，可在 WorkBuddy 中运行 `/reload-plugins`，无需重新安装。
 
-Run:
+## Acceptance test
 
-```text
-"<CODEX_BIN>" --version
-"<CODEX_BIN>" login status
-```
-
-If the user is not logged in, stop and ask them to complete the normal Codex login. Do not handle credentials.
-
-## 2. Runtime Checks
-
-Required:
-
-- Git 2.30 or newer
-- Node.js 20 or newer, available as `node`
-- network access to GitHub and OpenAI
-- a Codex account with gpt-image-2 access for final image generation
-
-Check:
+在 WorkBuddy Web UI 的新对话输入：
 
 ```text
-git --version
-node --version
+请使用 Jewel Buddy 的可视化表单梳理一个送给母亲的珠宝设计。确认 brief 后，用当前可用的图片生成工具生成一张设计图并展示在主对话中。
 ```
 
-If a dependency is missing, ask permission before installing it.
+成功标准：
 
-On macOS, when Homebrew is already installed, the standard commands are:
+1. 主对话调用 `ask_grill_me_questions`。
+2. 对话气泡内出现单题分页 widget。
+3. 提交后主对话出现包含可读摘要与 `Current widget context (JSON)` 的用户消息。
+4. 前四轮继续访谈且不重复已确认事实。
+5. 确认轮后主对话调用真实图片生成工具；有权限时展示图片，无权限时如实说明阻塞。
 
-```text
-brew install git node@20
-```
+## Troubleshooting
 
-Do not install Homebrew silently. Without Homebrew, offer the official Git/Xcode Command Line Tools
-and Node.js LTS installers and wait for the user.
+- 表单只显示文本：确认正在使用 `--serve` 或 IDE Web UI，而不是终端 TUI。
+- 表单无法加载：打开 DevTools 的 sandbox iframe console，检查 `ui/initialize` 是否成功返回。
+- 提交后对话不继续：在 DevTools 中确认 `ui/message` 成功，并检查 `_meta['codebuddy.ai/sendMessageMode']` 为 `send`。
+- 不出图：确认 WorkBuddy 会话已经安装并授权图片生成工具；本插件不内置图片供应商。
 
-On Windows, when `winget` is available, the standard commands are:
-
-```text
-winget install --id Git.Git --exact
-winget install --id OpenJS.NodeJS.LTS --exact
-```
-
-These may open platform approval prompts. Wait for completion, then rerun the version checks.
-
-## 3. Inspect Existing State
-
-Run:
-
-```text
-"<CODEX_BIN>" plugin marketplace list --json
-"<CODEX_BIN>" plugin list --available --json
-```
-
-Expected identities:
-
-```text
-marketplace: grill-me-jewel
-plugin: grill-me-jewel@grill-me-jewel
-source: yuyou-dev/GrillMeJewel
-```
-
-If the marketplace exists with the official source, continue idempotently. If it points to another
-source, stop and report the conflict. If the official plugin is already installed and enabled at the
-current version, do not reinstall it unnecessarily.
-
-## 4. Install
-
-When the official marketplace is absent:
-
-```text
-"<CODEX_BIN>" plugin marketplace add yuyou-dev/GrillMeJewel --ref v0.2.0 --json
-```
-
-Install the core plugin:
-
-```text
-"<CODEX_BIN>" plugin add grill-me-jewel@grill-me-jewel --json
-```
-
-Do not install any unrelated plugin.
-
-## 5. Verify
-
-Repeat the marketplace and plugin list commands. Confirm the plugin reports:
-
-```text
-installed: true
-enabled: true
-version: 0.2.0
-```
-
-Use the marketplace list JSON to find the official marketplace root. From that root run:
-
-```text
-node scripts/gmj.mjs doctor --json
-```
-
-Accept `restart_required` immediately after installation. `blocked` is not success; report its
-checks and recovery step. The doctor verifies Node, Git, one Skill, one Apps UI resource, the plugin
-installation, and the MCP registration without reading credentials.
-
-## 6. Restart And New Task
-
-Tell the user to completely quit and reopen Codex Desktop. Then create a new task and use:
-
-```text
-请进入 Grill Me 珠宝模式。我只有一个模糊的珠宝想法，请先用 Apps UI 访谈并确认 brief，然后用 gpt-image-2 生成设计图。
-```
-
-Success means:
-
-1. `Grill Me 珠宝` appears in the Skill selector.
-2. The conversation opens the paged interview form.
-3. Submitted answers return to the same task.
-4. The agent presents a final brief confirmation.
-5. After confirmation, gpt-image-2 returns the requested real design image or an honest permission blocker.
-
-Do not claim a new task was created if the host cannot create one automatically. Give the exact test prompt instead.
-
-## Update
-
-Existing installations must follow the permanent [UPDATE.md](UPDATE.md) Runbook. It clones the exact
-target release, performs a reversible fixed-ref migration, verifies the plugin version, preserves
-user work, and requires a full Codex restart plus a new task.
-
-## Uninstall
-
-From the configured marketplace root:
-
-```text
-node scripts/gmj.mjs uninstall --json
-```
-
-This removes the plugin only. It does not delete conversations, briefs, or generated images. Remove
-the marketplace separately only when the user explicitly asks and no other installed component uses it.
+官方协议说明：[WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。

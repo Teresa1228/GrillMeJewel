@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-const SERVER_NAME = "grill_me_jewel_ui";
-const SERVER_VERSION = "0.2.0";
+const SERVER_NAME = "jewel_buddy_ui";
+const SERVER_VERSION = "0.1.0";
 const MCP_VERSION = "2025-11-25";
-const RESOURCE_URI = "ui://grill-me-jewel/interview/v3.html";
+const RESOURCE_URI = "ui://jewel-buddy/interview/v1.html";
 const HTML_PATH = fileURLToPath(new URL("./interview.html", import.meta.url));
 const DISCOVERY_STAGES = ["foundation", "meaning", "design_language", "variation_delivery"];
 const STAGE_LABELS = {
@@ -94,7 +94,7 @@ function normalizeInterview(args) {
   }
   return {
     schemaVersion: 2,
-    title: text(args.title || "Grill Me 珠宝", "title", 80),
+    title: text(args.title || "Jewel Buddy", "title", 80),
     intro: optionalText(args.intro, "intro", 240),
     round,
     stage,
@@ -108,7 +108,7 @@ function normalizeInterview(args) {
 function toolDescriptor() {
   return {
     name: "ask_grill_me_questions",
-    description: "Present one Grill Me Jewel interview round. Complete foundation, meaning, design_language, and variation_delivery as four sequential discovery rounds before a separate confirmation round. Ask 1-4 unresolved questions per round, collect delivery_count once when absent, and define wide candidate variation for multi-image delivery. The UI shows one question at a time and returns stable answer ids.",
+    description: "Present one Jewel Buddy interview round in WorkBuddy. Complete foundation, meaning, design_language, and variation_delivery as four sequential discovery rounds before a separate confirmation round. Ask 1-4 unresolved questions per round, collect delivery_count once when absent, and define wide candidate variation for multi-image delivery. The UI shows one question at a time and returns stable answer ids to the main WorkBuddy conversation.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -152,7 +152,6 @@ function toolDescriptor() {
     },
     _meta: {
       ui: { resourceUri: RESOURCE_URI },
-      "openai/outputTemplate": RESOURCE_URI,
     },
   };
 }
@@ -161,9 +160,9 @@ function callTool(params) {
   if (params?.name !== "ask_grill_me_questions") throw new Error(`unknown tool: ${params?.name || ""}`);
   const interview = normalizeInterview(params.arguments || {});
   return {
-    content: [{ type: "text", text: `请在 Grill Me 珠宝表单中完成第 ${interview.round} 轮回答。` }],
+    content: [{ type: "text", text: `请在 Jewel Buddy 表单中完成第 ${interview.round} 轮回答。` }],
     structuredContent: { interview },
-    _meta: { ui: { resourceUri: RESOURCE_URI }, "openai/outputTemplate": RESOURCE_URI },
+    _meta: { ui: { resourceUri: RESOURCE_URI } },
   };
 }
 
@@ -177,7 +176,7 @@ function resultFor(method, params) {
   }
   if (method === "tools/list") return { tools: [toolDescriptor()] };
   if (method === "resources/list") {
-    return { resources: [{ name: "grill-me-jewel-interview-v3", uri: RESOURCE_URI, mimeType: "text/html;profile=mcp-app" }] };
+    return { resources: [{ name: "jewel-buddy-interview-v1", uri: RESOURCE_URI, mimeType: "text/html;profile=mcp-app" }] };
   }
   if (method === "resources/read") {
     if (params?.uri !== RESOURCE_URI) throw new Error(`unknown resource: ${params?.uri || ""}`);
@@ -186,7 +185,13 @@ function resultFor(method, params) {
         uri: RESOURCE_URI,
         mimeType: "text/html;profile=mcp-app",
         text: readFileSync(HTML_PATH, "utf8"),
-        _meta: { ui: { prefersBorder: false } },
+        _meta: {
+          ui: {
+            csp: {},
+            permissions: {},
+            prefersBorder: false,
+          },
+        },
       }],
     };
   }

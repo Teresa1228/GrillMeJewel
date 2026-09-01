@@ -1,15 +1,15 @@
 ---
-name: grill-me-jewel
-description: Turn a vague or unformed jewelry idea into a confirmed brief and real gpt-image-2 jewelry design images through a deliberate four-stage Apps UI interview. Use when the user explicitly asks for “Grill Me 珠宝”, “Grill Me Jewel”, “你到底想要设计什么”, help discovering a jewelry direction, or has no clear jewelry product, concept, and intended output. Do not use when the request is already specific enough to execute or only needs one ordinary factual clarification.
+name: jewel-buddy
+description: Turn a vague jewelry idea into a confirmed brief and real design images through a four-stage WorkBuddy MCP Apps interview. Use when the user asks for Jewel Buddy, wants a visual jewelry interview, or has no clear product, concept, and output direction. Do not use for an already executable brief or one ordinary clarification.
 ---
 
-# Grill Me Jewel
+# Jewel Buddy for WorkBuddy
 
 ## Purpose
 
 Help a beginner discover and articulate what jewelry they want to design. Complete four purposeful
-discovery rounds plus a separate confirmation round, preserve every answer, then use Codex
-gpt-image-2 to generate the requested real design images.
+discovery rounds plus a separate confirmation round, preserve every answer, then use an image
+generation tool available in the current WorkBuddy session to generate the requested real designs.
 
 ## Interview
 
@@ -33,8 +33,9 @@ gpt-image-2 to generate the requested real design images.
    `ask_grill_me_questions` confirmation round with `stage: confirmation` and `round` 5 or greater. Ask
    whether to confirm it or revise it, with a text field for corrections when needed.
 7. After confirmation, read `references/image2-generation.md`, compile one production prompt per
-   requested design, and invoke Codex `$imagegen` / gpt-image-2. The confirmed brief is the source
-   of truth; do not resume interviewing during generation.
+   requested design, discover the real image-generation tool available in WorkBuddy, and invoke it.
+   Prefer a native image tool or an installed image-generation MCP. The confirmed brief is the
+   source of truth; do not resume interviewing during generation and never invent a tool result.
 8. Return the final brief in Markdown under: Objective, Product, Design Direction, Materials and
    Craft, Source Assets, Output Intent, Locked Facts, Flexible Details. Present every real generated
    image inline. Never claim an image exists unless the tool returned it.
@@ -63,6 +64,6 @@ gpt-image-2 to generate the requested real design images.
 - Confirm every multi-image candidate changes at least three visible design axes rather than only
   wording, crop, lighting, background, or camera angle.
 - Confirm the final brief was explicitly accepted or corrected by the user.
-- Confirm gpt-image-2 returned the requested number of readable image assets. If image generation
+- Confirm the selected WorkBuddy image tool returned the requested number of readable image assets. If image generation
   is unavailable or fails, report the real blocker and keep the confirmed brief for retry; do not
   present a text brief as completed visual delivery.

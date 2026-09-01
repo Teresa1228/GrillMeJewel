@@ -2,40 +2,40 @@
 
 ## Skill is not visible
 
-Run `codex plugin list --json` and confirm `grill-me-jewel@grill-me-jewel` is installed and enabled.
-Completely restart Codex and create a new task. In the Skill picker search for `Grill Me 珠宝` or
-`grill-me-jewel`.
+Run `codebuddy plugin validate ./plugins/grill-me-jewel`, then start with
+`codebuddy --plugin-dir ./plugins/grill-me-jewel --serve`. In the Skill picker search for
+`Jewel Buddy` or call `/jewel-buddy:grill-me-jewel`.
 
 ## Questions appear as plain text
 
-The Skill loaded but the Apps UI MCP probably did not. Run `node scripts/gmj.mjs doctor --json` from
-the configured marketplace root. A newly installed MCP requires a full restart and a new task.
+The Skill loaded but the Apps UI MCP probably did not. Run `npm test`, then `/reload-plugins` in
+WorkBuddy. Apps UI renders only in Web UI or an IDE-embedded Web UI.
 
 ## Form stays on loading
 
 The UI changes to a terminal error after nine seconds. Retry the form call in the same task. If the
-error repeats, verify `grill_me_jewel_ui` is enabled and that the installed version matches the
-marketplace version.
+error repeats, verify `jewel_buddy_ui` is enabled and inspect the sandbox iframe console for the
+`ui/initialize` failure. The widget has no runtime CDN dependency.
 
 ## Form submits but the interview does not continue
 
-Confirm the host supports `ui/message`. Preserve the submitted answer summary shown in the task and
-ask Codex to continue the next unresolved Grill Me round without repeating established facts.
+Confirm the host supports `ui/message`. Inspect the widget request and verify
+`_meta['codebuddy.ai/sendMessageMode']` is `send`. Preserve the submitted summary and ask WorkBuddy
+to continue the next unresolved round without repeating established facts.
 
 ## Image generation does not start
 
-The final brief must be explicitly confirmed first. If it was confirmed, ask Codex to use
-`$imagegen` / gpt-image-2 with that brief. Missing account permission or network access must be
-reported honestly; the plugin does not accept an API key as a workaround.
+The final brief must be explicitly confirmed first. If it was confirmed, ask WorkBuddy to discover
+and use the image-generation tool available in the current session. Missing tool permission or
+network access must be reported honestly; the plugin does not accept an API key as a workaround.
 
-## Marketplace conflict
+## Plugin name conflict
 
-Do not overwrite an existing marketplace named `grill-me-jewel` that points to another source.
-Report its source and let the user decide whether to remove or rename the conflicting installation.
+If another installed plugin already uses the `jewel-buddy` name, test this checkout with
+`--plugin-dir`; the local plugin takes precedence for that session. Rename or uninstall a plugin
+only after the user chooses which one to keep.
 
-## Update is blocked or rolled back
+## Reload does not pick up changes
 
-Use the permanent [UPDATE.md](../UPDATE.md) Runbook rather than `marketplace upgrade` alone. Read the
-updater JSON fields `fromVersion`, `toVersion`, `restoredPlugins`, and `rolledBack`. When rollback is
-true, the previous version was restored and remains usable after restart. When false, stop and report
-the recorded actions and error; do not edit plugin caches or marketplace configuration by hand.
+Run `/reload-plugins` and start a new conversation. If the old MCP remains registered, stop the
+current `codebuddy --plugin-dir` session and start it again from the repository root.

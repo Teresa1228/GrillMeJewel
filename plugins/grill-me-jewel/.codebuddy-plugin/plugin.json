@@ -1,0 +1,11 @@
+{
+  "name": "jewel-buddy",
+  "version": "0.1.0",
+  "description": "A WorkBuddy MCP App that turns a vague jewelry idea into a confirmed brief and then asks the main conversation to generate images.",
+  "author": {
+    "name": "GrillMe WorkBuddy contributors"
+  },
+  "repository": "https://github.com/yuyou-dev/GrillMeJewel",
+  "license": "Apache-2.0",
+  "keywords": ["workbuddy", "mcp-apps", "jewelry-design", "guided-interview"]
+}

@@ -7,6 +7,7 @@ import test from "node:test";
 const ROOT = resolve(import.meta.dirname, "..");
 const SERVER = resolve(ROOT, "plugins/grill-me-jewel/mcp/server.mjs");
 const HTML = resolve(ROOT, "plugins/grill-me-jewel/mcp/interview.html");
+const RESOURCE_URI = "ui://jewel-buddy/interview/v1.html";
 
 function transact(messages) {
   const input = `${messages.map((message) => JSON.stringify(message)).join("\n")}\n`;
@@ -15,19 +16,25 @@ function transact(messages) {
   return result.stdout.trim().split("\n").filter(Boolean).map(JSON.parse);
 }
 
-test("MCP exposes one interview tool and one Apps UI resource", () => {
+test("MCP exposes one WorkBuddy interview tool and one Apps UI resource", () => {
   const responses = transact([
     { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } } },
     { jsonrpc: "2.0", id: 2, method: "tools/list" },
     { jsonrpc: "2.0", id: 3, method: "resources/list" },
-    { jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: "ui://grill-me-jewel/interview/v3.html" } },
+    { jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: RESOURCE_URI } },
   ]);
-  assert.equal(responses[0].result.serverInfo.name, "grill_me_jewel_ui");
+  assert.equal(responses[0].result.serverInfo.name, "jewel_buddy_ui");
   assert.deepEqual(responses[1].result.tools.map(({ name }) => name), ["ask_grill_me_questions"]);
   assert.match(responses[1].result.tools[0].description, /four sequential discovery rounds/);
   assert.match(responses[1].result.tools[0].description, /delivery_count/);
   assert.equal(responses[2].result.resources.length, 1);
+  assert.equal(responses[1].result.tools[0]._meta.ui.resourceUri, RESOURCE_URI);
+  assert.equal(responses[1].result.tools[0]._meta["openai/outputTemplate"], undefined);
+  assert.equal(responses[2].result.resources[0].uri, RESOURCE_URI);
   assert.match(responses[3].result.contents[0].mimeType, /profile=mcp-app/);
+  assert.ok(Buffer.byteLength(responses[3].result.contents[0].text) < 256 * 1024);
+  assert.deepEqual(responses[3].result.contents[0]._meta.ui.csp, {});
+  assert.deepEqual(responses[3].result.contents[0]._meta.ui.permissions, {});
   assert.equal(responses[3].result.contents[0]._meta.ui.prefersBorder, false);
 });
 
@@ -45,6 +52,8 @@ test("interview call preserves stable ids and never puts media in structured con
   assert.equal(response.result.structuredContent.interview.questions.length, 2);
   assert.equal(response.result.structuredContent.interview.stage, "foundation");
   assert.equal(response.result.structuredContent.interview.minimumDiscoveryRounds, 4);
+  assert.equal(response.result._meta.ui.resourceUri, RESOURCE_URI);
+  assert.equal(response.result.content[0].type, "text");
   assert.doesNotMatch(JSON.stringify(response.result.structuredContent), /base64|data:image/);
 });
 
@@ -70,9 +79,27 @@ test("server enforces four ordered discovery stages before confirmation", () => 
   assert.equal(validConfirmation.result.structuredContent.interview.stage, "confirmation");
 });
 
-test("Apps UI is a single-question wizard with terminal loading and no nested scrolling", () => {
+test("Apps UI feeds widget actions to the WorkBuddy conversation", () => {
   const html = readFileSync(HTML, "utf8");
-  assert.match(html, /ui\/message/);
+  assert.match(html, /class WorkBuddyBridge/);
+  assert.match(html, /new WorkBuddyBridge\(/);
+  assert.match(html, /request\("ui\/update-model-context",params\)/);
+  assert.match(html, /request\("ui\/message",params\)/);
+  assert.match(html, /app\.updateModelContext\(/);
+  assert.match(html, /app\.sendMessage\(/);
+  assert.ok(html.indexOf("app.updateModelContext(") < html.indexOf("app.sendMessage("));
+  assert.match(html, /codebuddy\.ai\/sendMessageMode/);
+  assert.match(html, /catch\(\(\)=>\{\}\)/);
+  assert.match(html, /submitting/);
+  assert.match(html, /otherText=\{\};submitting=false;render\(\)/);
+  assert.match(html, /立即使用 WorkBuddy 当前可用的图片生成能力/);
+  assert.match(html, /messageResult\?\.isError/);
+  assert.doesNotMatch(html, /esm\.sh/);
+  assert.doesNotMatch(html, /window\.openai|openai\/outputTemplate/);
+});
+
+test("Apps UI remains a single-question wizard with terminal loading and no nested scrolling", () => {
+  const html = readFileSync(HTML, "utf8");
   assert.match(html, /上一题/);
   assert.match(html, /下一题/);
   assert.match(html, /9\s*000|9000/);

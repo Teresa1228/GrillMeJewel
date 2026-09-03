@@ -22,6 +22,7 @@ test("README and install guide document the WorkBuddy plugin flow", () => {
   assert.match(readme, /MCP\/连接器页面信任并开启 `jewel-buddy`/);
   assert.match(readme, /旧消息里的卡片也不会原地更新/);
   assert.match(readme, /连接器 → 自定义连接/);
+  assert.match(readme, /2\/2 个工具已启用、2 个资源/);
   assert.match(readme, /不要回退到原生对话卡片/);
   assert.match(readme, /`ui:\/\/jewel-buddy\/interview\/v4\.html` 是资源标识/);
   assert.match(readme, /show_jewel_results/);
@@ -32,7 +33,8 @@ test("README and install guide document the WorkBuddy plugin flow", () => {
   assert.match(install, /npm run install:workbuddy/);
   assert.match(install, /npm run doctor:workbuddy/);
   assert.match(install, /jewel-buddy: \.\.\. ✓ Connected/);
-  assert.match(install, /不需要运行本地 HTTP 服务/);
+  assert.match(install, /2\/2 tools, 2 resources/);
+  assert.match(install, /无需保持终端/);
   assert.match(install, /同名连接器指向其他未知程序/);
   assert.match(install, /新建\s*对话/);
   assert.match(install, /信任/);

@@ -33,21 +33,23 @@ Downloading or pushing source code does not register a connector. From the check
 
 ```bash
 npm run install:workbuddy
-npm run doctor:workbuddy
 ```
 
-The installer explicitly targets WorkBuddy's `~/.workbuddy` profile and registers the repository's
-server over stdio. It also installs the repository's only Skill under
-`~/.workbuddy/skills/jewel-buddy/`. Success requires both `jewel-buddy: ... ✓ Connected` and
-`jewel-buddy Skill: ... ✓ Installed`; a generic “added” message is not enough. After that, open
-WorkBuddy's MCP/connector page and enable `jewel-buddy`, then use a new conversation.
+The installer explicitly targets WorkBuddy's `~/.workbuddy` profile, installs a user-level managed
+HTTP service on `127.0.0.1`, and registers its URL. It also installs the repository's only Skill under
+`~/.workbuddy/skills/jewel-buddy/`. Open **连接器 → 自定义连接**, trust and enable `jewel-buddy`, then
+fully quit and reopen WorkBuddy once. Back in the install directory run `npm run doctor:workbuddy`.
+Success requires managed MCP `✓ Healthy (2/2 tools, 2 resources)`, connector `✓ Connected`, Skill
+`✓ Installed`, and Apps UI catalog `✓ Ready`; the first item is the automated equivalent of the
+connector panel's “2/2 tools enabled, 2 resources”. A generic “added” message or MCP handshake alone
+is not enough. Then use a new conversation.
 
 If WorkBuddy's CLI does not return within 45 seconds, the installer stops with an explicit timeout
 instead of leaving the installation window hanging. Check WorkBuddy and network status, then retry.
 
 Do not add the GitHub `/tree/codex/workbuddy-port` page as a marketplace or MCP URL. It is a browser
 page. WorkBuddy 2.132 also passes a Git URL `#branch` fragment directly to `git clone`, so the current
-preview uses the checked-out branch plus the stdio connector installer. After the PR reaches upstream
+preview uses the checked-out branch plus the managed HTTP connector installer. After the PR reaches upstream
 `main`, migrate to the marketplace package and remove the preview connector first.
 
 ## Questions appear as plain text
@@ -62,13 +64,20 @@ conversation. Run `/reload-plugins` only when testing the marketplace/plugin mod
 The widget reports a terminal error after nine seconds when `ui/initialize` fails. If it remains a
 360px gray `pending_placeholder`, check these in order:
 
-1. Confirm the plugin manifest contains `"mcpServers": "./.mcp.json"`.
-2. Confirm only one `jewel-buddy` connector is enabled. Plugin stdio and a manual global connector
+1. Run `npm run doctor:workbuddy`. If MCP and Skill pass but Apps UI catalog fails, the gray block is
+   a host placeholder: the tool result was buffered before WorkBuddy associated the tool with its UI.
+2. Fully quit and reopen WorkBuddy. Closing only the window does not rebuild the Apps catalog.
+   Then use **连接器 → 自定义连接** to turn `jewel-buddy` off and on, and test in a new conversation.
+3. Confirm the plugin manifest contains `"mcpServers": "./.mcp.json"`.
+4. Confirm only one `jewel-buddy` connector is enabled. Plugin stdio and a manual global connector
    must not run together.
-3. Run `/reload-plugins` once and test in a new conversation; an old card never hot-reloads.
-4. Confirm Node.js is version 20 or newer and the plugin process can read `mcp/interview.html`.
+5. Run `/reload-plugins` only for Marketplace/plugin mode, then test in a new conversation; an
+   old card never hot-reloads. Connector preview mode uses a full WorkBuddy restart instead.
+6. Confirm Node.js is version 20 or newer and the plugin process can read `mcp/interview.html`.
 
-For an observable diagnostic transport, clone the repository and keep this process running in a terminal:
+The installed connector should never require a terminal. First run `npm run doctor:workbuddy`; if the
+managed MCP is not `✓ Healthy`, rerun `npm run install:workbuddy` to recreate and restart its user-level
+service. For a temporary developer-only foreground trace, stop the managed service first, then run:
 
 ```bash
 npm run serve:http
@@ -77,7 +86,7 @@ curl -sS http://127.0.0.1:39528/health
 
 The health response must report `ok: true`, `name: jewel-buddy`, and the current version. Configure
 one manual WorkBuddy connector with URL `http://127.0.0.1:39528/mcp`, then disable the plugin's
-same-name stdio connector for that test. Closing the terminal stops the backend. If startup reports
+same-name stdio connector for that test. Closing the terminal stops this foreground backend. If startup reports
 `EADDRINUSE`, another process owns port `39528`; stop that known process or choose another port and
 use the matching connector URL.
 

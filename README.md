@@ -4,7 +4,7 @@
   <img src="plugins/jewel-buddy/assets/brand/logo-header.webp" alt="苏哇科技 GrillMeJewel" width="176">
 </p>
 
-Jewel Buddy `0.3.1` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
+Jewel Buddy `0.3.2` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
 
 ![Jewel Buddy 内嵌访谈界面](docs/images/apps-ui-interview.png)
 
@@ -13,7 +13,7 @@ Jewel Buddy `0.3.1` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 在 WorkBuddy **新建一个对话，只发送一次**下面的目标。它不是定时任务，不应创建自动化，也不应循环安装：
 
 ```text
-/goal 一次性安装并验证 Jewel Buddy for WorkBuddy：完整阅读 https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/INSTALL.md，严格按其中步骤把该分支安装到稳定的本地目录，并运行 npm run install:workbuddy 与 npm run doctor:workbuddy。不要创建定时任务，不要启动固定端口 HTTP 服务，不要添加第二个同名连接器，也不要在 Apps UI 未出现时回退到原生对话卡片。成功后只告诉我前往 WorkBuddy → 连接器 → 自定义连接，信任新安装的 jewel-buddy MCP 脚本并开启开关，再给我一句开始设计的提示词；失败时返回原始错误和停止位置。
+/goal 一次性安装并验证 Jewel Buddy for WorkBuddy：完整阅读 https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/INSTALL.md，严格按其中步骤把该分支安装到稳定的本地目录并运行 npm run install:workbuddy。安装器必须注册由操作系统托管、登录后自动恢复的本地 jewel-buddy MCP；不要创建定时任务、外部服务或第二个同名连接器。安装后告诉我前往 WorkBuddy → 连接器 → 自定义连接，信任新安装的 jewel-buddy MCP 并开启开关；首次安装后完整重启 WorkBuddy，再由我在安装目录运行 npm run doctor:workbuddy，四项均为 ✓ 才算验证完成。不要在 Apps UI 未出现时回退到原生对话卡片。失败时返回原始错误和停止位置。
 ```
 
 完整自动安装过程见 [INSTALL.md](INSTALL.md)。
@@ -40,7 +40,7 @@ Jewel Buddy `0.3.1` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 
 ## 安装与首次使用
 
-一次性目标会检出当前 WorkBuddy 分支，安装仓库中唯一的 Jewel Buddy 用户级 Skill，并通过 WorkBuddy 自带 CLI 注册一个用户级 **stdio** 连接器。它不会启动 localhost 服务，也不会留下会因终端退出而失效的端口。安装完成后，你只需要在 WorkBuddy 的 MCP/连接器页面信任并开启 `jewel-buddy`。
+一次性目标会检出当前 WorkBuddy 分支，安装仓库中唯一的 Jewel Buddy 用户级 Skill，并通过 WorkBuddy 自带 CLI 注册一个用户级本地 HTTP 连接器。安装器同时创建操作系统用户级托管服务：macOS 使用 LaunchAgent，Windows 使用登录启动项，Linux 使用 systemd user service。服务只监听 `127.0.0.1`，无需保持终端窗口；macOS/Linux 会在异常退出后自动恢复，Windows 会在用户登录后自动启动。安装完成后，你只需要在 WorkBuddy 的 MCP/连接器页面信任并开启 `jewel-buddy`。
 
 已经下载仓库时，可以双击根目录的 `Install Jewel Buddy.command`（macOS）或 `Install Jewel Buddy.cmd`（Windows）。也可以手动执行：
 
@@ -48,12 +48,17 @@ Jewel Buddy `0.3.1` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 git clone --branch codex/workbuddy-port --single-branch https://github.com/Teresa1228/GrillMeJewel.git
 cd GrillMeJewel
 npm run install:workbuddy
-npm run doctor:workbuddy
 ```
 
 安装器会自动查找 macOS/Windows WorkBuddy Desktop 的常见内置 CLI 路径；若应用安装在自定义位置，可先把其 `codebuddy` 绝对路径设置到 `WORKBUDDY_CLI`。
 
-健康检查必须同时显示 MCP `✓ Connected` 与 Skill `✓ Installed`。随后前往 **WorkBuddy → 连接器 → 自定义连接**，核对安装器输出的脚本路径，信任 `jewel-buddy` MCP 脚本并开启开关，再新建对话；旧消息里的卡片也不会原地更新。当前连接器预览路径不要求运行 `/reload-plugins`。如果可视化表单没有出现，停止并排查连接器，不要回退到原生对话卡片。
+安装后前往 **WorkBuddy → 连接器 → 自定义连接**，核对 `http://127.0.0.1:39528/mcp`，信任 `jewel-buddy` MCP 并开启开关。首次安装后必须**完全退出并重新打开 WorkBuddy**；只关闭窗口不够。重开后回到安装目录运行：
+
+```bash
+npm run doctor:workbuddy
+```
+
+健康检查必须同时显示托管 MCP `✓ Healthy (2/2 tools, 2 resources)`、连接器 `✓ Connected`、Skill `✓ Installed` 与 Apps UI catalog `✓ Ready`。这也自动复查连接器面板里的“2/2 个工具已启用、2 个资源”。只有四项全部通过，才在新对话测试；旧消息里的卡片也不会原地更新。当前连接器预览路径不运行 `/reload-plugins`。如果第四项未通过，按 doctor 的提示再次完整重启并重新开关连接器，不要回退到原生对话卡片。
 
 开始设计：
 
@@ -61,18 +66,18 @@ npm run doctor:workbuddy
 用 Jewel Buddy 帮我设计一件送给母亲的吊坠；请用可视化表单逐步确认需求，确认后生成并展示设计图。
 ```
 
-WorkBuddy 通过连接器开关启动同一个 `jewel-buddy` stdio server。Widget 遵循 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。连接器可以以当前用户权限执行代码，只应从你信任的仓库安装。
+WorkBuddy 通过连接器开关使用本机 `jewel-buddy` HTTP server，操作系统负责启动与异常恢复。Widget 遵循 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。托管服务以当前用户权限执行代码，只应从你信任的仓库安装。
 
 ## 运行模式
 
 | 模式 | 用途 | 是否需要单独服务 |
 | --- | --- | --- |
-| 一键连接器安装 | 当前 GitHub 预览默认路径；WorkBuddy 连接器开关启动 stdio MCP | 否 |
+| 一键连接器安装 | 当前 GitHub 预览默认路径；系统托管本地 HTTP MCP，WorkBuddy 开关只控制连接器 | 是，由安装器自动管理 |
 | Marketplace 安装 | PR 合并后的正式分发路径；插件通过 `.mcp.json` 启动 stdio MCP | 否 |
 | `--plugin-dir` | 开发者直接测试当前 checkout | 否 |
-| HTTP 诊断 | 灰屏、缓存或 stdio 宿主问题的可观测兜底 | 是，终端必须保持运行 |
+| 手动 HTTP 开发 | 开发者临时观察协议与日志 | 是，终端必须保持运行；不要与托管服务同时启动 |
 
-所有模式的插件名、MCP key、`serverInfo.name` 和 `ui://` authority 都必须是 `jewel-buddy`。`ui://jewel-buddy/interview/v4.html` 是资源标识，**不能**改成 `http://`。HTTP 模式的后端地址才是 `http://127.0.0.1:39528/mcp`。
+所有模式的插件名、MCP key、`serverInfo.name` 和 `ui://` authority 都必须是 `jewel-buddy`。`ui://jewel-buddy/interview/v4.html` 是资源标识，**不能**改成 `http://`。一键连接器的后端地址是 `http://127.0.0.1:39528/mcp`；它由操作系统托管，不是需要手工保持的开发服务器。
 
 连接器预览与 Marketplace 插件模式二选一；不要同时启动两个同名 server。完整诊断步骤见 [Troubleshooting](docs/TROUBLESHOOTING.md)。
 

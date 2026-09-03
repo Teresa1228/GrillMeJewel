@@ -22,7 +22,7 @@ test("WorkBuddy plugin manifest and MCP identity are aligned", () => {
   const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
   const mcp = JSON.parse(readFileSync(resolve(PLUGIN, ".mcp.json"), "utf8"));
   assert.equal(manifest.name, "jewel-buddy");
-  assert.equal(manifest.version, "0.3.1");
+  assert.equal(manifest.version, "0.3.2");
   assert.equal(rootPackage.version, manifest.version);
   assert.equal(marketplace.version, manifest.version);
   assert.equal(marketplace.plugins[0].version, manifest.version);

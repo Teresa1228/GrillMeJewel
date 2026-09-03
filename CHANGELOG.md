@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.2 - 2026-09-03
+
+- Fixed a false-green installer check where the stdio MCP and Skill were healthy but WorkBuddy's
+  Apps catalog had not loaded either Jewel Buddy UI tool, leaving a permanent gray pending card.
+- Replaced the connector-preview stdio transport with a loopback HTTP MCP managed by the user's
+  operating system. This matches the Apps catalog path that WorkBuddy 5.4.7 actually inspects while
+  eliminating the terminal-lifetime `ECONNREFUSED 127.0.0.1:39528` failure.
+- Added an Apps catalog diagnostic gate. `npm run doctor:workbuddy` now requires the MCP handshake,
+  installed Skill, the exact 2/2 tools plus 2 resources, and both inline UI apps before reporting the
+  installation ready.
+- Added the MCP `resources/templates/list` response expected by WorkBuddy's Apps inspector.
+- Made the initial desktop-host restart boundary explicit: trust and enable the connector, fully
+  quit/reopen WorkBuddy once, then run doctor and test in a new conversation. Connector mode does not use
+  `/reload-plugins` and never falls back to native conversation cards.
+
 ## 0.3.1 - 2026-09-03
 
 - Added an idempotent WorkBuddy connector installer and health check that register the local MCP over

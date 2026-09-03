@@ -64,6 +64,7 @@ test("MCP exposes interview and result tools through versioned Apps UI resources
     { jsonrpc: "2.0", id: 2, method: "tools/list" },
     { jsonrpc: "2.0", id: 3, method: "resources/list" },
     { jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: RESOURCE_URI } },
+    { jsonrpc: "2.0", id: 5, method: "resources/templates/list" },
   ]);
   assert.equal(responses[0].result.serverInfo.name, SERVER_ID);
   assert.deepEqual(responses[1].result.tools.map(({ name }) => name), ["ask_grill_me_questions", "show_jewel_results"]);
@@ -90,6 +91,7 @@ test("MCP exposes interview and result tools through versioned Apps UI resources
   assert.deepEqual(responses[3].result.contents[0]._meta.ui.csp, {});
   assert.deepEqual(responses[3].result.contents[0]._meta.ui.permissions, {});
   assert.equal(responses[3].result.contents[0]._meta.ui.prefersBorder, false);
+  assert.deepEqual(responses[4].result.resourceTemplates, []);
 });
 
 test("result tool presents real images without leaking local paths", () => {
@@ -169,7 +171,7 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   t.after(() => child.kill());
 
   const health = await fetch(`${endpoint}/health`).then((response) => response.json());
-  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.1" });
+  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.2" });
 
   const post = (message) => fetch(`${endpoint}/mcp`, {
     method: "POST",
@@ -200,6 +202,13 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   assert.equal(resources.result.resources[0].uri, RESOURCE_URI);
   assert.match(view.result.contents[0].mimeType, /profile=mcp-app/);
   assert.match(view.result.contents[0].text, /正在载入访谈问题/);
+
+  const doctor = spawnSync(process.execPath, [
+    SERVER, "--inspect", `${endpoint}/mcp`, "--expect-version", "0.3.2",
+  ], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(doctor.status, 0, doctor.stderr);
+  assert.match(doctor.stdout, /"tools":2/);
+  assert.match(doctor.stdout, /"resources":2/);
 });
 
 test("interview call preserves stable ids and never puts media in structured content", () => {

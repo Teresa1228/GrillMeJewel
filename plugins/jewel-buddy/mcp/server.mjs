@@ -7,7 +7,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const SERVER_NAME = "jewel-buddy";
-const SERVER_VERSION = "0.3.1";
+const SERVER_VERSION = "0.3.2";
 const MCP_VERSION = "2025-11-25";
 const RESOURCE_URI = "ui://jewel-buddy/interview/v4.html";
 const RESULTS_URI = "ui://jewel-buddy/results/v3.html";
@@ -385,6 +385,7 @@ function resultFor(method, params) {
     };
   }
   if (method === "tools/list") return { tools: [interviewToolDescriptor(), resultToolDescriptor()] };
+  if (method === "resources/templates/list") return { resourceTemplates: [] };
   if (method === "resources/list") {
     return { resources: [
       { name: "jewel-buddy-interview-v4", uri: RESOURCE_URI, mimeType: "text/html;profile=mcp-app" },
@@ -512,8 +513,79 @@ function startHttp(port) {
   });
 }
 
+async function checkHttp(url, expectedVersion) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2_000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const health = await response.json();
+    if (health?.ok !== true || health?.name !== SERVER_NAME) {
+      throw new Error(`unexpected service identity: ${JSON.stringify(health)}`);
+    }
+    if (expectedVersion && health.version !== expectedVersion) {
+      throw new Error(`expected ${expectedVersion}, received ${health.version || "unknown"}`);
+    }
+    process.stdout.write(`${JSON.stringify(health)}\n`);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function inspectHttp(endpoint, expectedVersion) {
+  const healthUrl = new URL("/health", endpoint).href;
+  await checkHttp(healthUrl, expectedVersion);
+  const post = async (id, method, params) => {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        "content-type": "application/json",
+        "mcp-protocol-version": MCP_VERSION,
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, ...(params ? { params } : {}) }),
+    });
+    if (!response.ok) throw new Error(`${method} returned HTTP ${response.status}`);
+    const payload = await response.json();
+    if (payload.error) throw new Error(`${method}: ${payload.error.message || "unknown error"}`);
+    return payload.result;
+  };
+  await post(1, "initialize", {
+    protocolVersion: MCP_VERSION,
+    capabilities: {},
+    clientInfo: { name: "jewel-buddy-doctor", version: SERVER_VERSION },
+  });
+  const tools = await post(2, "tools/list");
+  const resources = await post(3, "resources/list");
+  const toolNames = tools?.tools?.map(({ name }) => name) || [];
+  const resourceUris = resources?.resources?.map(({ uri }) => uri) || [];
+  const expectedTools = ["ask_grill_me_questions", "show_jewel_results"];
+  const expectedResources = [RESOURCE_URI, RESULTS_URI];
+  if (JSON.stringify(toolNames) !== JSON.stringify(expectedTools)) {
+    throw new Error(`expected 2/2 tools, received ${JSON.stringify(toolNames)}`);
+  }
+  if (JSON.stringify(resourceUris) !== JSON.stringify(expectedResources)) {
+    throw new Error(`expected 2 resources, received ${JSON.stringify(resourceUris)}`);
+  }
+  process.stdout.write(`${JSON.stringify({ tools: toolNames.length, resources: resourceUris.length })}\n`);
+}
+
 const argv = process.argv.slice(2);
-if (argv.includes("--http")) {
+if (argv.includes("--inspect")) {
+  const inspectIndex = argv.indexOf("--inspect");
+  const versionIndex = argv.indexOf("--expect-version");
+  const endpoint = argv[inspectIndex + 1];
+  const expectedVersion = versionIndex >= 0 ? argv[versionIndex + 1] : undefined;
+  if (!endpoint) throw new Error("--inspect requires an MCP endpoint URL");
+  await inspectHttp(endpoint, expectedVersion);
+} else if (argv.includes("--check")) {
+  const checkIndex = argv.indexOf("--check");
+  const versionIndex = argv.indexOf("--expect-version");
+  const checkUrl = argv[checkIndex + 1];
+  const expectedVersion = versionIndex >= 0 ? argv[versionIndex + 1] : undefined;
+  if (!checkUrl) throw new Error("--check requires a health URL");
+  await checkHttp(checkUrl, expectedVersion);
+} else if (argv.includes("--http")) {
   const portIndex = argv.indexOf("--port");
   const rawPort = portIndex >= 0 ? argv[portIndex + 1] : process.env.JEWEL_BUDDY_HTTP_PORT || "39528";
   const port = Number(rawPort);

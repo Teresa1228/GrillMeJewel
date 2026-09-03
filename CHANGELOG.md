@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.1 - 2026-09-03
+
+- Added an idempotent WorkBuddy connector installer and health check that register the local MCP over
+  stdio through WorkBuddy's own CLI and desktop configuration directory, install the bundled user
+  Skill, and verify both surfaces.
+- Added double-click installers for macOS and Windows. After the one-time setup, users can manage
+  `jewel-buddy` from the WorkBuddy MCP/connector switch without running a localhost backend.
+- Replaced the preview install source with the exact `Teresa1228/GrillMeJewel` WorkBuddy branch so
+  testers do not accidentally install the upstream Codex-only `main` release.
+- The installer automatically replaces only the known dead `127.0.0.1:39528` registration and
+  refuses to overwrite an unknown same-name connector.
+- Required every field id and option value to begin with a lowercase letter (`gold_18k`, not
+  `18k_gold`) so the first WorkBuddy tool call cannot fail schema validation and leave a gray pending
+  card.
+- Stopped the interview on Apps UI discovery or rendering failure instead of falling back to native
+  conversation cards or prose questions.
+- Added regression checks for stdio-only registration, installer idempotency, branch-pinned public
+  instructions, and the exact plugin MCP manifest.
+
 ## 0.3.0 - 2026-09-03
 
 - Published Jewel Buddy as a standalone WorkBuddy / CodeBuddy marketplace plugin.

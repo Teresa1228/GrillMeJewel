@@ -18,9 +18,11 @@ generation tool available in the current WorkBuddy session to generate the reque
    rounds. A known fact moves its stage to a deeper decision; it does not remove the stage.
 2. For every round, call `ask_grill_me_questions` as the primary interaction surface with the exact
    `stage` and sequential `round`. Ask one to four currently answerable fields. Discover that exact
-   tool name before falling back to prose. Use concise chat questions only after real tool discovery
-   fails or the call errors.
-3. Use stable lowercase field and option ids. Offer an `other` option when a useful answer may fall
+   tool name before calling it. If discovery, the call, or Apps UI rendering fails, report that MCP/UI
+   blocker and stop the interview for repair. Never replace the Apps UI with native conversation cards,
+   prose questions, or a simulated form.
+3. Use stable lowercase field and option ids that start with a letter. For example, use `gold_18k`,
+   never `18k_gold`. Offer an `other` option when a useful answer may fall
    outside the list. In foundation, ask `delivery_count` unless the user already supplied a count;
    offer `count_1`, `count_2`, `count_4`, `count_8`, and a custom value. Never ask for providers,
    concurrency, internal job ids, API keys, or cost.
@@ -69,7 +71,8 @@ generation tool available in the current WorkBuddy session to generate the reque
 - Confirm that the user explicitly requested the interview or the original idea lacked product,
   concept, and output clarity.
 - Confirm every unresolved round used the Apps UI form unless an actual discovery/call failure was
-  reported.
+  reported and the interview was stopped. Confirm no native conversation card or prose-question
+  fallback was used.
 - Confirm all four discovery stages were submitted before the separate confirmation round.
 - Confirm no round exceeded four fields or repeated an established fact.
 - Confirm the accepted delivery count matches the number of generated images.

@@ -26,11 +26,36 @@ and run `/plugin-validate /absolute/path/to/plugins/jewel-buddy` in WorkBuddy. B
 plugin validation. Require an explicit pass/fail result; a hung or interrupted command is
 inconclusive, not successful.
 
+## MCP connector is missing after downloading the GitHub branch
+
+Downloading or pushing source code does not register a connector. From the checked-out
+`codex/workbuddy-port` branch run:
+
+```bash
+npm run install:workbuddy
+npm run doctor:workbuddy
+```
+
+The installer explicitly targets WorkBuddy's `~/.workbuddy` profile and registers the repository's
+server over stdio. It also installs the repository's only Skill under
+`~/.workbuddy/skills/jewel-buddy/`. Success requires both `jewel-buddy: ... ✓ Connected` and
+`jewel-buddy Skill: ... ✓ Installed`; a generic “added” message is not enough. After that, open
+WorkBuddy's MCP/connector page and enable `jewel-buddy`, then use a new conversation.
+
+If WorkBuddy's CLI does not return within 45 seconds, the installer stops with an explicit timeout
+instead of leaving the installation window hanging. Check WorkBuddy and network status, then retry.
+
+Do not add the GitHub `/tree/codex/workbuddy-port` page as a marketplace or MCP URL. It is a browser
+page. WorkBuddy 2.132 also passes a Git URL `#branch` fragment directly to `git clone`, so the current
+preview uses the checked-out branch plus the stdio connector installer. After the PR reaches upstream
+`main`, migrate to the marketplace package and remove the preview connector first.
+
 ## Questions appear as plain text
 
 Apps UI renders only in WorkBuddy Web UI or an IDE-embedded Web UI. Terminal TUI and print mode
-intentionally receive the tool's text fallback. In Web UI, verify the plugin is enabled, run
-`/reload-plugins` once, and start a new conversation.
+cannot render this interview. Stop the interview instead of continuing with native conversation
+cards or prose questions. In Web UI, verify the connector is trusted and enabled, then start a new
+conversation. Run `/reload-plugins` only when testing the marketplace/plugin mode.
 
 ## Form stays on loading or becomes a gray rectangle
 
@@ -43,7 +68,7 @@ The widget reports a terminal error after nine seconds when `ui/initialize` fail
 3. Run `/reload-plugins` once and test in a new conversation; an old card never hot-reloads.
 4. Confirm Node.js is version 20 or newer and the plugin process can read `mcp/interview.html`.
 
-For an observable fallback, clone the repository and keep this process running in a terminal:
+For an observable diagnostic transport, clone the repository and keep this process running in a terminal:
 
 ```bash
 npm run serve:http
@@ -66,10 +91,11 @@ result. The gray area is the pending tool placeholder, not a rendered blank page
 required every option value to start with a letter, so a natural value such as `18k_gold` failed and
 the model retried as `gold_18k`.
 
-Current builds accept lowercase option values that start with a letter or digit. Question ids and
-result item ids must still start with a lowercase letter. After updating, restart the development
-server when applicable, run `/reload-plugins` once, and verify in a new conversation. Do not rely on
-automatic retry as the normal rendering path.
+Current builds require field ids, option values, and result item ids to start with a lowercase
+letter. Use `gold_18k`, never `18k_gold`. After updating, restart the development server when
+applicable and verify in a new conversation. Run `/reload-plugins` only for marketplace/plugin mode;
+the connector installer does not require it. Do not rely on automatic retry as the normal rendering
+path and do not replace the failed Apps UI with a native conversation card.
 
 ## Form submits but the interview does not continue
 

@@ -1,11 +1,13 @@
 {
   "name": "jewel-buddy-workbuddy",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "scripts": {
     "serve:http": "node plugins/jewel-buddy/mcp/server.mjs --http --port 39528",
-    "test": "node --test tests/mcp.test.mjs tests/package.test.mjs tests/public-release.test.mjs",
+    "install:workbuddy": "node scripts/workbuddy-connector.mjs install",
+    "doctor:workbuddy": "node scripts/workbuddy-connector.mjs status",
+    "test": "node --test tests/install.test.mjs tests/mcp.test.mjs tests/package.test.mjs tests/public-release.test.mjs",
     "scan:public": "node scripts/public-scan.mjs",
     "doctor": "npm test",
     "release:check": "npm test && npm run scan:public && npm run doctor"

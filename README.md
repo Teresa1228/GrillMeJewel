@@ -4,7 +4,7 @@
   <img src="plugins/jewel-buddy/assets/brand/logo-header.webp" alt="苏哇科技 GrillMeJewel" width="176">
 </p>
 
-Jewel Buddy `0.3.0` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
+Jewel Buddy `0.3.1` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
 
 ![Jewel Buddy 内嵌访谈界面](docs/images/apps-ui-interview.png)
 
@@ -13,7 +13,7 @@ Jewel Buddy `0.3.0` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 在 WorkBuddy **新建一个对话，只发送一次**下面的目标。它不是定时任务，不应创建自动化，也不应循环安装：
 
 ```text
-/goal 一次性完成 Jewel Buddy for WorkBuddy 的安装与验收：完整阅读 https://raw.githubusercontent.com/yuyou-dev/GrillMeJewel/main/INSTALL.md，在本机核验 Node.js 20+、marketplace 来源和插件清单；安装或更新 jewel-buddy，确认插件已启用、MCP 工具可发现、内置表单可打开。不要创建定时任务，不要重复注册全局 MCP，不要安装额外运行时依赖。成功后明确告诉我何时运行一次 /reload-plugins，并给我一句开始珠宝设计的提示词；如失败，返回原始错误和停止位置。
+/goal 一次性安装并验证 Jewel Buddy for WorkBuddy：完整阅读 https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/INSTALL.md，严格按其中步骤把该分支安装到稳定的本地目录，并运行 npm run install:workbuddy 与 npm run doctor:workbuddy。不要创建定时任务，不要启动固定端口 HTTP 服务，不要添加第二个同名连接器，也不要在 Apps UI 未出现时回退到原生对话卡片。成功后只告诉我前往 WorkBuddy → 连接器 → 自定义连接，信任新安装的 jewel-buddy MCP 脚本并开启开关，再给我一句开始设计的提示词；失败时返回原始错误和停止位置。
 ```
 
 完整自动安装过程见 [INSTALL.md](INSTALL.md)。
@@ -40,15 +40,20 @@ Jewel Buddy `0.3.0` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 
 ## 安装与首次使用
 
-一次性目标会检查环境、注册或刷新 `yuyou-dev/GrillMeJewel`、安装或更新 `jewel-buddy@jewel-buddy-marketplace`，并确认插件已启用。也可以手动执行：
+一次性目标会检出当前 WorkBuddy 分支，安装仓库中唯一的 Jewel Buddy 用户级 Skill，并通过 WorkBuddy 自带 CLI 注册一个用户级 **stdio** 连接器。它不会启动 localhost 服务，也不会留下会因终端退出而失效的端口。安装完成后，你只需要在 WorkBuddy 的 MCP/连接器页面信任并开启 `jewel-buddy`。
 
-```text
-/plugin marketplace add yuyou-dev/GrillMeJewel
-/plugin install jewel-buddy@jewel-buddy-marketplace
-/reload-plugins
+已经下载仓库时，可以双击根目录的 `Install Jewel Buddy.command`（macOS）或 `Install Jewel Buddy.cmd`（Windows）。也可以手动执行：
+
+```bash
+git clone --branch codex/workbuddy-port --single-branch https://github.com/Teresa1228/GrillMeJewel.git
+cd GrillMeJewel
+npm run install:workbuddy
+npm run doctor:workbuddy
 ```
 
-`/reload-plugins` 只在安装、更新或修改插件后运行一次；随后**新建对话**。不要每轮访谈都重载，旧消息里的卡片也不会原地更新。
+安装器会自动查找 macOS/Windows WorkBuddy Desktop 的常见内置 CLI 路径；若应用安装在自定义位置，可先把其 `codebuddy` 绝对路径设置到 `WORKBUDDY_CLI`。
+
+健康检查必须同时显示 MCP `✓ Connected` 与 Skill `✓ Installed`。随后前往 **WorkBuddy → 连接器 → 自定义连接**，核对安装器输出的脚本路径，信任 `jewel-buddy` MCP 脚本并开启开关，再新建对话；旧消息里的卡片也不会原地更新。当前连接器预览路径不要求运行 `/reload-plugins`。如果可视化表单没有出现，停止并排查连接器，不要回退到原生对话卡片。
 
 开始设计：
 
@@ -56,19 +61,20 @@ Jewel Buddy `0.3.0` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 用 Jewel Buddy 帮我设计一件送给母亲的吊坠；请用可视化表单逐步确认需求，确认后生成并展示设计图。
 ```
 
-WorkBuddy 会从插件内 `.mcp.json` 启动 `jewel-buddy` stdio server。分发流程遵循 [WorkBuddy 插件市场指南](https://www.workbuddy.cn/docs/cli/plugin-marketplaces)，Widget 遵循 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。插件可以以当前用户权限执行代码，只应从你信任的仓库安装。
+WorkBuddy 通过连接器开关启动同一个 `jewel-buddy` stdio server。Widget 遵循 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。连接器可以以当前用户权限执行代码，只应从你信任的仓库安装。
 
 ## 运行模式
 
 | 模式 | 用途 | 是否需要单独服务 |
 | --- | --- | --- |
-| Marketplace 安装 | 面向普通测试者的默认路径；插件通过 `.mcp.json` 启动 stdio MCP | 否 |
+| 一键连接器安装 | 当前 GitHub 预览默认路径；WorkBuddy 连接器开关启动 stdio MCP | 否 |
+| Marketplace 安装 | PR 合并后的正式分发路径；插件通过 `.mcp.json` 启动 stdio MCP | 否 |
 | `--plugin-dir` | 开发者直接测试当前 checkout | 否 |
 | HTTP 诊断 | 灰屏、缓存或 stdio 宿主问题的可观测兜底 | 是，终端必须保持运行 |
 
 所有模式的插件名、MCP key、`serverInfo.name` 和 `ui://` authority 都必须是 `jewel-buddy`。`ui://jewel-buddy/interview/v4.html` 是资源标识，**不能**改成 `http://`。HTTP 模式的后端地址才是 `http://127.0.0.1:39528/mcp`。
 
-插件模式与手工 `~/.workbuddy/mcp.json` 配置二选一；不要同时启动两个同名 server。完整诊断步骤见 [Troubleshooting](docs/TROUBLESHOOTING.md)。
+连接器预览与 Marketplace 插件模式二选一；不要同时启动两个同名 server。完整诊断步骤见 [Troubleshooting](docs/TROUBLESHOOTING.md)。
 
 ## 开发者本地运行
 
@@ -118,7 +124,7 @@ macOS 的 WorkBuddy Desktop 若没有把 `codebuddy` 加到 `PATH`，可直接�
 /jewel-buddy:jewel-buddy
 ```
 
-MCP Apps 只在 WorkBuddy/CodeBuddy Web UI 或 IDE 内嵌 Web UI 中展示；终端 TUI 与 print 模式会自动降级为 server 返回的文本内容。详见 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。
+MCP Apps 只在 WorkBuddy/CodeBuddy Web UI 或 IDE 内嵌 Web UI 中展示；终端 TUI 与 print 模式无法完成这套可视化访谈，应停止并提示切换到支持 Apps UI 的界面，不得继续用原生对话卡片或普通文本问题代替。详见 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。
 
 ## widget 如何“喂”给主对话
 

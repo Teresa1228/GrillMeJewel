@@ -1,137 +1,130 @@
 # Install Jewel Buddy in WorkBuddy
 
-This is a **one-time** installation runbook for a WorkBuddy `/goal`. Execute it once on the user's
-local WorkBuddy host. Do not create an automation, recurring task, monitor, or background installer.
-Do not merely explain the commands: perform the safe checks and installation steps, verify the
-result, then give the user the one remaining reload command.
+这是一个一次性安装说明，目标是把当前 GitHub 预览分支注册成 WorkBuddy 用户级 stdio
+MCP。完成后，用户只需要在 WorkBuddy 的 MCP/连接器页面开启 `jewel-buddy`。不要创建
+自动化、定时任务或后台 HTTP 守护进程。
 
-## Installation contract
+## 安装契约
 
-- Source marketplace: `yuyou-dev/GrillMeJewel`
-- Marketplace name: `jewel-buddy-marketplace`
-- Plugin: `jewel-buddy@jewel-buddy-marketplace`
-- Install scope: `user`
-- The plugin bundles its own stdio MCP server as `jewel-buddy`; do not add a separate global MCP
-  entry and do not replace another `grill-me-jewelry` MCP.
-- Keep the four identities aligned: plugin name, MCP key, `serverInfo.name`, and `ui://` authority
-  are all `jewel-buddy`.
-- Do not request credentials, install runtime packages, delete user data, or modify the user's
-  project. Stop and report the exact blocker if the repository cannot be reached or the manifest is
-  invalid.
+- 预览仓库：`Teresa1228/GrillMeJewel`
+- 固定分支：`codex/workbuddy-port`
+- MCP 名称：`jewel-buddy`
+- 传输方式：stdio
+- Node.js：20 或更高版本
+- 不需要运行本地 HTTP 服务，也不使用 `127.0.0.1:39528`
+- 不安装运行时依赖，不读取凭证，不修改其他连接器或其他 Skill
+- 不允许在 Apps UI 未出现时回退为原生对话卡片或普通文本问答
 
-## 1. Locate and check WorkBuddy CLI
+GitHub 的 `/tree/codex/workbuddy-port` 是浏览器页面地址，不能直接作为 Git clone 或 MCP
+地址。安装时必须检出分支本身。
 
-Prefer `codebuddy` from `PATH`. On macOS, if it is unavailable, use:
+## 给 WorkBuddy 执行的一次性步骤
 
-```text
-/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked/cli/bin/codebuddy
-```
+1. 确认 Node.js 版本：
 
-Run the resolved CLI with `--version`, confirm `plugin marketplace` and `plugin install` are
-available, then confirm `node --version` reports Node.js 20 or newer. Jewel Buddy requires a
-WorkBuddy Web UI or IDE surface that supports MCP Apps; terminal print mode cannot render the
-widget. Do not install Node or any package automatically if this check fails—report the requirement.
+   ```bash
+   node --version
+   ```
 
-## 2. Register or refresh the marketplace
+   低于 20 时停止并报告，不要自动安装系统软件。
 
-Inspect the configured marketplaces first. If an entry named `jewel-buddy-marketplace` exists,
-verify that its source is exactly the trusted GitHub repository `yuyou-dev/GrillMeJewel`. If the
-same name points to any other source, stop and report the conflict; do not update, replace, or install
-from it.
+2. 使用稳定目录克隆预览分支。若目录已经存在，先确认 `origin` 指向同一仓库；来源不一致
+   时停止，不覆盖或删除目录。
 
-If `jewel-buddy-marketplace` is absent, run:
+   ```bash
+   git clone --branch codex/workbuddy-port --single-branch https://github.com/Teresa1228/GrillMeJewel.git ~/.workbuddy/extensions/jewel-buddy
+   ```
 
-```bash
-codebuddy plugin marketplace add yuyou-dev/GrillMeJewel
-```
+   已有正确 checkout 时更新：
 
-If it already exists, refresh it instead of adding a duplicate:
+   ```bash
+   git -C ~/.workbuddy/extensions/jewel-buddy fetch origin codex/workbuddy-port
+   git -C ~/.workbuddy/extensions/jewel-buddy switch codex/workbuddy-port
+   git -C ~/.workbuddy/extensions/jewel-buddy pull --ff-only origin codex/workbuddy-port
+   ```
 
-```bash
-codebuddy plugin marketplace update jewel-buddy-marketplace
-```
+3. 在仓库根目录运行幂等安装器：
 
-Use the resolved macOS CLI path in place of `codebuddy` when necessary.
+   ```bash
+   cd ~/.workbuddy/extensions/jewel-buddy
+   npm run install:workbuddy
+   ```
 
-## 3. Install or update Jewel Buddy
+   安装器会寻找 WorkBuddy 自带的 `codebuddy` CLI，显式使用桌面版的 `~/.workbuddy`
+   配置目录，把仓库中唯一的 Jewel Buddy Skill 同步到
+   `~/.workbuddy/skills/jewel-buddy/`，并调用官方 `mcp add` 命令注册：
 
-Inspect installed plugins. If Jewel Buddy is absent, install it in user scope:
+   ```text
+   node <稳定目录>/plugins/jewel-buddy/mcp/server.mjs --stdio
+   ```
 
-```bash
-codebuddy plugin install jewel-buddy@jewel-buddy-marketplace --scope user
-```
+   若发现以前遗留的 `http://127.0.0.1:39528/mcp`，安装器只替换这个已知的同名旧配置。
+   如果同名连接器指向其他未知程序，或用户 Skill 目录已有并非本安装器管理的同名内容，
+   安装器必须停止，不能覆盖用户配置。
 
-If it is already installed, update the existing installation:
+4. 验证真实连接，而不是只相信“添加成功”的提示：
 
-```bash
-codebuddy plugin update jewel-buddy@jewel-buddy-marketplace --scope user
-```
+   ```bash
+   npm run doctor:workbuddy
+   ```
 
-If the installed entry is disabled, enable it without reinstalling:
+   该命令内部执行 WorkBuddy 的 `mcp list` 健康检查，只以真实握手结果为准。
 
-```bash
-codebuddy plugin enable jewel-buddy@jewel-buddy-marketplace --scope user
-```
+   成功输出必须包含：
 
-Do not uninstall the older `grill-me-jewelry` MCP. The WorkBuddy plugin uses the distinct plugin ID
-`jewel-buddy` and MCP server ID `jewel-buddy`, so both may coexist.
+   ```text
+   jewel-buddy: ... ✓ Connected
+   jewel-buddy Skill: ... ✓ Installed
+   ```
 
-## 4. Verify and hand back
+   若没有这行，返回完整原始错误并停止；不要让用户继续测试灰屏卡片。
 
-Run `codebuddy plugin list --json`. Verify that the result contains an enabled `jewel-buddy` sourced
-from `jewel-buddy-marketplace` and has no dependency errors. If the CLI reports a manifest, MCP
-startup, or permission error, report that exact error and do not claim success.
+5. 告诉用户打开 **WorkBuddy → 连接器 → 自定义连接**，找到 `jewel-buddy`，核对并信任
+   安装器输出的 MCP 脚本路径，然后开启开关。信任是宿主的安全确认，安装器不能替用户
+   绕过。随后新建对话再测试。
 
-When verification succeeds, ask the user to send this once in the current WorkBuddy conversation:
+   当前连接器预览安装不需要 `/reload-plugins`；旧对话里的卡片也不会热更新。若可视化表单
+   没有出现，停止当前流程并运行 `npm run doctor:workbuddy`，不要回退到原生对话卡片或用
+   普通文本问答模拟表单。
 
-```text
-/reload-plugins
-```
-
-Then give the user this starting prompt:
+开始设计的提示词：
 
 ```text
 用 Jewel Buddy 帮我设计一件送给母亲的吊坠；请用可视化表单逐步确认需求，确认后生成并展示设计图。
 ```
 
-After the reload finishes, start a **new conversation** before sending the prompt. Do not reload
-between interview rounds, and do not use an old rendered card as the verification target.
+## 已下载仓库的一键入口
 
-## Developer validation and local run
+- macOS：双击仓库根目录的 `Install Jewel Buddy.command`
+- Windows：双击仓库根目录的 `Install Jewel Buddy.cmd`
+- 任意受支持平台：运行 `npm run install:workbuddy`
 
-For a cloned repository, validate and run the working tree without installing it globally:
+三个入口最终都调用同一个零依赖 Node 安装器，避免文档步骤与真实行为漂移。
+
+## 与正式 Marketplace 的关系
+
+当前预览分支使用连接器安装，是因为 WorkBuddy 2.132 的 directory marketplace 会出现
+“命令提示成功但没有 installed registry”的行为，而该版本对 Git URL 的 `#branch` 又没有
+正确剥离 fragment。连接器方式仍然使用 stdio，不需要前后端常驻进程。
+
+PR 合并到上游 `main` 后，正式发布应恢复 marketplace 安装。在迁移到正式插件前，先移除
+这个预览连接器，避免插件内 MCP 与用户连接器同时注册为 `jewel-buddy`。
+
+## 开发与发布验证
 
 ```bash
 npm test
 npm run scan:public
 npm run doctor
 codebuddy plugin validate ./plugins/jewel-buddy
+```
+
+开发者也可以使用：
+
+```bash
 codebuddy --plugin-dir ./plugins/jewel-buddy --serve --open
 ```
 
-If macOS WorkBuddy Desktop is installed but `codebuddy` is not on `PATH`, replace it with the bundled
-CLI path shown above. Keep `--plugin-dir`; it guarantees that the current checkout is loaded instead
-of a similarly named global MCP connection.
-
-## Acceptance test
-
-In the WorkBuddy Web UI, send the starting prompt above. Success means:
-
-1. The main conversation calls `ask_grill_me_questions` and renders the single-question widget.
-2. Every submission creates exactly one user message containing a readable summary and
-   `Current widget context (JSON)`.
-3. WorkBuddy automatically opens the next inline round without repeating confirmed facts.
-4. After confirmation, the main conversation invokes a real available image-generation tool and
-   displays its returned image; if none is available, it reports the real blocker.
-5. When ImageGen returns usable `images[].localPath` values, the main conversation calls
-   `show_jewel_results` once. WorkBuddy renders a second result card with the same image count;
-   image-to-image results provide a draggable source/result divider.
-
-The marketplace/plugin stdio path is the distribution path. If the form remains a gray placeholder
-after the checks above, stop claiming success and follow [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
-for the separately started HTTP diagnostic path. The HTTP endpoint is a backend transport only;
-the interview UI Resource must remain `ui://jewel-buddy/interview/v4.html`; the result card uses
-`ui://jewel-buddy/results/v3.html`.
-
-Official references: [WorkBuddy plugin marketplaces](https://www.workbuddy.cn/docs/cli/plugin-marketplaces)
-and [WorkBuddy MCP Apps](https://www.workbuddy.cn/docs/cli/mcp-apps).
+MCP Apps UI 只会在 WorkBuddy Web UI 或 IDE 内嵌 Web UI 中渲染。终端模式不能完成这套
+访谈，应停止并提示用户切换界面，不得用原生对话卡片或普通文本问题代替。协议与灰屏排查见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)；宿主能力以
+[WorkBuddy MCP Apps 文档](https://www.workbuddy.cn/docs/cli/mcp-apps)为准。

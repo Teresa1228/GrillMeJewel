@@ -169,7 +169,7 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   t.after(() => child.kill());
 
   const health = await fetch(`${endpoint}/health`).then((response) => response.json());
-  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.0" });
+  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.1" });
 
   const post = (message) => fetch(`${endpoint}/mcp`, {
     method: "POST",
@@ -223,10 +223,21 @@ test("interview call preserves stable ids and never puts media in structured con
   assert.doesNotMatch(JSON.stringify(response.result.structuredContent), /base64|data:image/);
 });
 
-test("interview accepts common option values that begin with digits", () => {
-  const [listed, response] = transact([
+test("interview requires option values to begin with a lowercase letter", () => {
+  const [listed, response, invalid] = transact([
     { jsonrpc: "2.0", id: 51, method: "tools/list" },
     { jsonrpc: "2.0", id: 52, method: "tools/call", params: {
+      name: "ask_grill_me_questions", arguments: {
+        title: "选择材质", round: 1, stage: "foundation",
+        questions: [{
+          id: "material", label: "主要材质", type: "single", options: [
+            { value: "gold_18k", label: "18K 金" },
+            { value: "platinum", label: "铂金" },
+          ],
+        }],
+      },
+    } },
+    { jsonrpc: "2.0", id: 53, method: "tools/call", params: {
       name: "ask_grill_me_questions", arguments: {
         title: "选择材质", round: 1, stage: "foundation",
         questions: [{
@@ -240,9 +251,11 @@ test("interview accepts common option values that begin with digits", () => {
   ]);
   const optionPattern = listed.result.tools[0].inputSchema.properties.questions.items
     .properties.options.items.properties.value.pattern;
-  assert.match("18k_gold", new RegExp(optionPattern));
+  assert.doesNotMatch("18k_gold", new RegExp(optionPattern));
+  assert.match("gold_18k", new RegExp(optionPattern));
   assert.equal(response.error, undefined);
-  assert.equal(response.result.structuredContent.interview.questions[0].options[0].value, "18k_gold");
+  assert.equal(response.result.structuredContent.interview.questions[0].options[0].value, "gold_18k");
+  assert.match(invalid.error.message, /must start with a lowercase letter/);
 });
 
 test("server rejects more than four questions and invalid option ids", () => {

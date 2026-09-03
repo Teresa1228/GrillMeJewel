@@ -13,25 +13,30 @@ test("README and install guide document the WorkBuddy plugin flow", () => {
     assert.match(content, /workbuddy\.cn\/docs\/cli\/mcp-apps/);
   }
   assert.match(readme, /app\.sendMessage/);
-  assert.match(readme, /\/goal 一次性完成 Jewel Buddy for WorkBuddy 的安装与验收/);
+  assert.match(readme, /\/goal 一次性安装并验证 Jewel Buddy for WorkBuddy/);
   assert.match(readme, /不要创建定时任务/);
-  assert.match(readme, /\/plugin marketplace add yuyou-dev\/GrillMeJewel/);
-  assert.match(readme, /\/plugin install jewel-buddy@jewel-buddy-marketplace/);
-  assert.match(readme, /\/reload-plugins/);
+  assert.match(readme, /Teresa1228\/GrillMeJewel/);
+  assert.match(readme, /codex\/workbuddy-port/);
+  assert.match(readme, /npm run install:workbuddy/);
+  assert.match(readme, /npm run doctor:workbuddy/);
+  assert.match(readme, /MCP\/连接器页面信任并开启 `jewel-buddy`/);
   assert.match(readme, /旧消息里的卡片也不会原地更新/);
+  assert.match(readme, /连接器 → 自定义连接/);
+  assert.match(readme, /不要回退到原生对话卡片/);
   assert.match(readme, /`ui:\/\/jewel-buddy\/interview\/v4\.html` 是资源标识/);
   assert.match(readme, /show_jewel_results/);
   assert.match(readme, /图生图/);
   assert.match(readme, /新的、视觉一致的结果卡/);
   assert.doesNotMatch(readme, /await app\.updateModelContext/);
-  assert.match(install, /Do not merely explain the commands/);
-  assert.match(install, /plugin marketplace update jewel-buddy-marketplace/);
-  assert.match(install, /plugin update jewel-buddy@jewel-buddy-marketplace/);
-  assert.match(install, /plugin list --json/);
-  assert.match(install, /Node\.js 20 or newer/);
-  assert.match(install, /same name points to any other source, stop/);
-  assert.match(install, /Current widget context \(JSON\)/);
-  assert.match(install, /start a \*\*new conversation\*\*/);
+  assert.match(install, /git clone --branch codex\/workbuddy-port --single-branch/);
+  assert.match(install, /npm run install:workbuddy/);
+  assert.match(install, /npm run doctor:workbuddy/);
+  assert.match(install, /jewel-buddy: \.\.\. ✓ Connected/);
+  assert.match(install, /不需要运行本地 HTTP 服务/);
+  assert.match(install, /同名连接器指向其他未知程序/);
+  assert.match(install, /新建\s*对话/);
+  assert.match(install, /信任/);
+  assert.match(install, /不要回退到原生对话卡片/);
 });
 
 test("troubleshooting records the high-frequency WorkBuddy failure modes", () => {

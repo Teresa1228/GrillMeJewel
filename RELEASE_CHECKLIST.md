@@ -1,4 +1,4 @@
-# Jewel Buddy 0.3.0 Release Checklist
+# Jewel Buddy 0.3.1 Release Checklist
 
 Use this checklist once for a GitHub release. It is not an installer and does not create a
 recurring task.
@@ -6,7 +6,7 @@ recurring task.
 ## Repository
 
 - [ ] `package.json`, marketplace metadata, plugin manifest, and MCP `serverInfo.version` all say
-      `0.3.0`.
+      `0.3.1`.
 - [ ] `.codebuddy-plugin/marketplace.json` is tracked and points to `./plugins/jewel-buddy`.
 - [ ] The public plugin contains exactly one Skill: `plugins/jewel-buddy/skills/jewel-buddy`.
 - [ ] `git status --short --ignored` shows local `.workbuddy/` and `generated-images/` only as
@@ -19,6 +19,7 @@ Run from the repository root:
 
 ```bash
 npm run release:check
+npm run doctor:workbuddy
 codebuddy plugin validate ./plugins/jewel-buddy
 ```
 
@@ -30,9 +31,9 @@ pass/fail message; an interrupted process is not a pass.
 
 ## WorkBuddy smoke test
 
-1. Test the tagged checkout with `codebuddy --plugin-dir ./plugins/jewel-buddy --serve --open` or
-   install it from the GitHub marketplace.
-2. Run `/reload-plugins` once, then start a new conversation.
+1. Run `npm run install:workbuddy` and require `npm run doctor:workbuddy` to show the stdio MCP as
+   connected and the user Skill as installed, or test the tagged checkout with `codebuddy --plugin-dir ./plugins/jewel-buddy --serve --open`.
+2. Open WorkBuddy's MCP/connector page, enable `jewel-buddy`, then start a new conversation.
 3. Send: `用 Jewel Buddy 帮我设计一件送给母亲的吊坠；请用可视化表单逐步确认需求，确认后生成并展示设计图。`
 4. Verify four discovery rounds and a separate confirmation round render as inline Apps UI.
 5. Verify every submission produces one user message and automatically advances.
@@ -49,7 +50,7 @@ missing image tools, stop and follow [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOT
 
 - [ ] Update `CHANGELOG.md` and release notes.
 - [ ] Commit the reviewed worktree.
-- [ ] Tag the exact commit as `v0.3.0` and push the tag.
+- [ ] Tag the exact commit as `v0.3.1` and push the tag.
 - [ ] Confirm the GitHub Actions Release workflow passes on macOS and Windows.
 - [ ] Download the generated ZIP, verify its SHA-256 file, and inspect the archive contents before
       sharing the release.

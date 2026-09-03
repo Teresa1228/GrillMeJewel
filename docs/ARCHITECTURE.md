@@ -6,12 +6,14 @@
 - Skill: `plugins/jewel-buddy/skills/jewel-buddy/`
 - Local stdio MCP: `plugins/jewel-buddy/mcp/server.mjs`
 - Apps UI: `plugins/jewel-buddy/mcp/interview.html`
+- One-click WorkBuddy connector installer: `scripts/workbuddy-connector.mjs`
 - Local verification: `npm run doctor`
 
-During development, WorkBuddy loads the plugin with
-`codebuddy --plugin-dir ./plugins/jewel-buddy --serve`. `/reload-plugins` reloads the Skill and
-local MCP after edits. The package does not modify conversations, briefs, generated images, or
-other user files.
+The current GitHub preview registers the same MCP server as a user-level stdio connector through
+WorkBuddy's own CLI. This makes it visible in WorkBuddy's MCP/connector settings without keeping a
+localhost process alive. During plugin development, WorkBuddy can instead load the plugin with
+`codebuddy --plugin-dir ./plugins/jewel-buddy --serve`; the two modes must not be enabled together.
+The package does not modify conversations, briefs, generated images, or other user files.
 
 ## Data Flow
 
@@ -36,8 +38,9 @@ no server database or cache is used.
 
 ## Protocol Boundary
 
-- Outer MCP: `2025-11-25`; the marketplace plugin uses newline-delimited stdio, while the optional local
-  diagnostic mode exposes stateless JSON responses at `http://127.0.0.1:39528/mcp`.
+- Outer MCP: `2025-11-25`; both the preview connector and marketplace plugin use newline-delimited
+  stdio. The optional local diagnostic mode exposes stateless JSON responses at
+  `http://127.0.0.1:39528/mcp`.
 - Apps UI iframe: `2026-01-26`, JSON-RPC over `window.postMessage`.
 - Resource MIME: `text/html;profile=mcp-app`.
 - MCP server identity and URI authority: `jewel-buddy`.

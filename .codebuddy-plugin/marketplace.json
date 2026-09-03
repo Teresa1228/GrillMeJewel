@@ -4,13 +4,13 @@
     "name": "苏哇科技"
   },
   "description": "WorkBuddy plugins for guided jewelry design.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "plugins": [
     {
       "name": "jewel-buddy",
       "source": "./plugins/jewel-buddy",
       "description": "Interview a jewelry idea in an inline WorkBuddy MCP App, confirm the brief, and hand it to the main conversation for real image generation.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "author": {
         "name": "苏哇科技"
       },

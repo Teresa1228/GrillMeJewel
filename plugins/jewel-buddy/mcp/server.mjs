@@ -7,7 +7,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const SERVER_NAME = "jewel-buddy";
-const SERVER_VERSION = "0.3.0";
+const SERVER_VERSION = "0.3.1";
 const MCP_VERSION = "2025-11-25";
 const RESOURCE_URI = "ui://jewel-buddy/interview/v4.html";
 const RESULTS_URI = "ui://jewel-buddy/results/v3.html";
@@ -59,8 +59,8 @@ function stableId(value, label) {
 
 function stableOptionValue(value, label) {
   const id = text(value, label, 48);
-  if (!/^[a-z0-9][a-z0-9_-]*$/.test(id)) {
-    throw new Error(`${label} must contain only lowercase letters, digits, underscores, or hyphens`);
+  if (!/^[a-z][a-z0-9_-]*$/.test(id)) {
+    throw new Error(`${label} must start with a lowercase letter and contain only lowercase letters, digits, underscores, or hyphens`);
   }
   return id;
 }
@@ -159,7 +159,7 @@ function interviewToolDescriptor() {
                 items: {
                   type: "object", additionalProperties: false, required: ["value", "label"],
                   properties: {
-                    value: { type: "string", pattern: "^[a-z0-9][a-z0-9_-]{0,47}$" },
+                    value: { type: "string", pattern: "^[a-z][a-z0-9_-]{0,47}$" },
                     label: { type: "string", minLength: 1, maxLength: 60 },
                     description: { type: "string", maxLength: 120 },
                   },

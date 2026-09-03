@@ -22,13 +22,21 @@ test("WorkBuddy plugin manifest and MCP identity are aligned", () => {
   const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
   const mcp = JSON.parse(readFileSync(resolve(PLUGIN, ".mcp.json"), "utf8"));
   assert.equal(manifest.name, "jewel-buddy");
-  assert.equal(manifest.version, "0.3.0");
+  assert.equal(manifest.version, "0.3.1");
   assert.equal(rootPackage.version, manifest.version);
   assert.equal(marketplace.version, manifest.version);
   assert.equal(marketplace.plugins[0].version, manifest.version);
   assert.equal(manifest.license, "Apache-2.0");
+  assert.equal(manifest.mcpServers, "./.mcp.json");
   assert.deepEqual(Object.keys(mcp.mcpServers), ["jewel-buddy"]);
-  assert.match(mcp.mcpServers["jewel-buddy"].args[0], /CODEBUDDY_PLUGIN_ROOT/);
+  assert.equal(mcp.mcpServers["jewel-buddy"].command, "node");
+  assert.deepEqual(mcp.mcpServers["jewel-buddy"].args, [
+    "${CODEBUDDY_PLUGIN_ROOT}/mcp/server.mjs",
+    "--stdio",
+  ]);
+  assert.equal(mcp.mcpServers["jewel-buddy"].url, undefined);
+  assert.equal(existsSync(resolve(PLUGIN, "mcp/server.mjs")), true);
+  assert.equal(existsSync(resolve(PLUGIN, "mcp/interview.html")), true);
 });
 
 test("the plugin contains one WorkBuddy skill with interview and image handoff rules", () => {
@@ -45,6 +53,8 @@ test("the plugin contains one WorkBuddy skill with interview and image handoff r
   assert.match(skill, /four discovery stages/);
   assert.match(skill, /delivery_count/);
   assert.match(skill, /at least three visible design axes/);
+  assert.match(skill, /Never replace the Apps UI with native conversation cards/);
+  assert.match(skill, /use `gold_18k`,\s*never `18k_gold`/);
   assert.doesNotMatch(skill, /\$imagegen|gpt-image-2|Codex/);
 });
 

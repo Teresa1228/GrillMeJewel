@@ -1,36 +1,110 @@
 # Jewel Buddy for WorkBuddy
 
-这是基于 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 改造的 WorkBuddy / CodeBuddy CLI 版本。它在对话气泡中展示 MCP Apps 表单，把 widget 操作回传为同一主对话里的用户消息，并在 brief 确认后要求 WorkBuddy 调用当前可用的图片生成工具。
+<p align="center">
+  <img src="plugins/jewel-buddy/assets/brand/logo-header.webp" alt="苏哇科技 GrillMeJewel" width="176">
+</p>
+
+Jewel Buddy `0.3.0` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
+
+![Jewel Buddy 内嵌访谈界面](docs/images/apps-ui-interview.png)
+
+## 一次性安装目标
+
+在 WorkBuddy **新建一个对话，只发送一次**下面的目标。它不是定时任务，不应创建自动化，也不应循环安装：
+
+```text
+/goal 一次性完成 Jewel Buddy for WorkBuddy 的安装与验收：完整阅读 https://raw.githubusercontent.com/yuyou-dev/GrillMeJewel/main/INSTALL.md，在本机核验 Node.js 20+、marketplace 来源和插件清单；安装或更新 jewel-buddy，确认插件已启用、MCP 工具可发现、内置表单可打开。不要创建定时任务，不要重复注册全局 MCP，不要安装额外运行时依赖。成功后明确告诉我何时运行一次 /reload-plugins，并给我一句开始珠宝设计的提示词；如失败，返回原始错误和停止位置。
+```
+
+完整自动安装过程见 [INSTALL.md](INSTALL.md)。
 
 ## 关键链路
 
 ```text
 主对话调用 ask_grill_me_questions
-  → WorkBuddy 根据 _meta.ui.resourceUri 渲染 widget
+  → WorkBuddy 根据 _meta.ui.resourceUri 与 launchSurface:inline 内联渲染 widget
   → 用户在 widget 中完成本轮回答
-  → app.updateModelContext 写入结构化答案
-  → app.sendMessage(send) 把操作变成新的用户消息并立即唤起 agent
+  → app.sendMessage(send) 一次性回写摘要与结构化 JSON，并立即唤起 agent
   → agent 继续访谈；最终确认后调用真实图片生成工具
   → 图片由 WorkBuddy 主对话原生展示
+  → agent 再调用 show_jewel_results，把真实结果回显为同风格 Apps UI 画廊
 ```
 
 核心代码在：
 
-- `plugins/grill-me-jewel/mcp/server.mjs`：stdio MCP server、tool 与 UI resource。
-- `plugins/grill-me-jewel/mcp/interview.html`：WorkBuddy MCP Apps widget。
-- `plugins/grill-me-jewel/skills/grill-me-jewel/SKILL.md`：主对话的访谈与出图工作流。
-- `plugins/grill-me-jewel/.codebuddy-plugin/plugin.json`：WorkBuddy 插件清单。
-- `plugins/grill-me-jewel/.mcp.json`：插件内 MCP 注册。
+- `plugins/jewel-buddy/mcp/server.mjs`：stdio/诊断 HTTP MCP server、tool 与 UI resource。
+- `plugins/jewel-buddy/mcp/interview.html`：WorkBuddy MCP Apps widget。
+- `plugins/jewel-buddy/skills/jewel-buddy/SKILL.md`：主对话的访谈与出图工作流。
+- `plugins/jewel-buddy/.codebuddy-plugin/plugin.json`：WorkBuddy 插件清单。
+- `plugins/jewel-buddy/.mcp.json`：插件内 MCP 注册。
 
-## 本地运行
+## 安装与首次使用
+
+一次性目标会检查环境、注册或刷新 `yuyou-dev/GrillMeJewel`、安装或更新 `jewel-buddy@jewel-buddy-marketplace`，并确认插件已启用。也可以手动执行：
+
+```text
+/plugin marketplace add yuyou-dev/GrillMeJewel
+/plugin install jewel-buddy@jewel-buddy-marketplace
+/reload-plugins
+```
+
+`/reload-plugins` 只在安装、更新或修改插件后运行一次；随后**新建对话**。不要每轮访谈都重载，旧消息里的卡片也不会原地更新。
+
+开始设计：
+
+```text
+用 Jewel Buddy 帮我设计一件送给母亲的吊坠；请用可视化表单逐步确认需求，确认后生成并展示设计图。
+```
+
+WorkBuddy 会从插件内 `.mcp.json` 启动 `jewel-buddy` stdio server。分发流程遵循 [WorkBuddy 插件市场指南](https://www.workbuddy.cn/docs/cli/plugin-marketplaces)，Widget 遵循 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。插件可以以当前用户权限执行代码，只应从你信任的仓库安装。
+
+## 运行模式
+
+| 模式 | 用途 | 是否需要单独服务 |
+| --- | --- | --- |
+| Marketplace 安装 | 面向普通测试者的默认路径；插件通过 `.mcp.json` 启动 stdio MCP | 否 |
+| `--plugin-dir` | 开发者直接测试当前 checkout | 否 |
+| HTTP 诊断 | 灰屏、缓存或 stdio 宿主问题的可观测兜底 | 是，终端必须保持运行 |
+
+所有模式的插件名、MCP key、`serverInfo.name` 和 `ui://` authority 都必须是 `jewel-buddy`。`ui://jewel-buddy/interview/v4.html` 是资源标识，**不能**改成 `http://`。HTTP 模式的后端地址才是 `http://127.0.0.1:39528/mcp`。
+
+插件模式与手工 `~/.workbuddy/mcp.json` 配置二选一；不要同时启动两个同名 server。完整诊断步骤见 [Troubleshooting](docs/TROUBLESHOOTING.md)。
+
+## 开发者本地运行
 
 要求 Node.js 20+ 和可用的 `codebuddy` CLI。在仓库根目录执行：
 
 ```bash
 npm test
-codebuddy plugin validate ./plugins/grill-me-jewel
-codebuddy --plugin-dir ./plugins/grill-me-jewel --serve
+npm run scan:public
+npm run doctor
+# or run all three gates:
+npm run release:check
+codebuddy plugin validate ./plugins/jewel-buddy
+codebuddy --plugin-dir ./plugins/jewel-buddy --serve
 ```
+
+发布前逐项完成 [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)。
+
+如需对照 WorkBuddy Desktop 的远程 MCP Apps 目录链路，可另开终端运行零依赖的本地
+Streamable HTTP 模式：
+
+```bash
+npm run serve:http
+```
+
+它只监听 `http://127.0.0.1:39528/mcp`；这是 MCP 后端端点。Widget 本身仍由
+`resources/read` 返回，资源标识必须保持 `ui://jewel-buddy/interview/v4.html`，不需要
+再启动一套 Widget 前端服务器。
+
+macOS 的 WorkBuddy Desktop 若没有把 `codebuddy` 加到 `PATH`，可直接使用应用内置 CLI：
+
+```bash
+/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked/cli/bin/codebuddy plugin validate ./plugins/jewel-buddy
+/Applications/WorkBuddy.app/Contents/Resources/app.asar.unpacked/cli/bin/codebuddy --plugin-dir ./plugins/jewel-buddy --serve --open
+```
+
+`--plugin-dir` 会明确加载当前仓库，避免误测 `~/.workbuddy/mcp.json` 中同名但指向其他目录或端口的旧连接器。
 
 进入 Web UI 后输入：
 
@@ -41,23 +115,14 @@ codebuddy --plugin-dir ./plugins/grill-me-jewel --serve
 也可以显式调用插件 Skill：
 
 ```text
-/jewel-buddy:grill-me-jewel
+/jewel-buddy:jewel-buddy
 ```
 
 MCP Apps 只在 WorkBuddy/CodeBuddy Web UI 或 IDE 内嵌 Web UI 中展示；终端 TUI 与 print 模式会自动降级为 server 返回的文本内容。详见 [WorkBuddy MCP Apps 接入指南](https://www.workbuddy.cn/docs/cli/mcp-apps)。
 
 ## widget 如何“喂”给主对话
 
-提交时 widget 先调用：
-
-```js
-await app.updateModelContext({
-  content: [{ type: "text", text: summary }],
-  structuredContent: { jewelBuddySubmission: payload },
-}).catch(() => {});
-```
-
-随后调用：
+提交时 widget 只调用一次 `ui/message`：
 
 ```js
 await app.sendMessage({
@@ -67,7 +132,18 @@ await app.sendMessage({
 });
 ```
 
-`send` 会把消息写成主对话中的用户气泡并立即触发 agent。完整 JSON 同时放在 `ui/message` 文本中，因此即使 `updateModelContext` 不可用，主对话仍能收到本轮状态。确认轮的消息会明确要求 WorkBuddy 调用真实图片生成能力；MCP server 本身不持有密钥、不调用图片供应商，也不会伪造生成成功。
+`send` 会把消息写成主对话中的用户气泡并立即触发 agent。摘要和完整 JSON 都放在这一次 `ui/message` 的文本中，避免先注入 model context 再发送消息造成重复触发或输入框附件。确认轮的消息会明确要求 WorkBuddy 调用真实图片生成能力；MCP server 本身不持有密钥、不调用图片供应商，也不会伪造生成成功。
+
+## 图片结果闭环
+
+真实图片工具成功后，主对话调用同一 MCP 的 `show_jewel_results`。它只读取图片工具明确返回且位于当前工作区 `generated-images/` 的本地结果路径，或接收其返回的 `data:` 图片；不会请求图片供应商、上传文件或保存副本。结果同时作为标准 MCP image content 和受大小限制的 `structuredContent` 图片数据回传：前者供主对话原生展示，后者兼容 WorkBuddy 只把 `structuredContent` 交给 Apps iframe 的行为。两条结果都不包含本地路径。结果卡 v3 限制图片展示高度，并在单图时省略无意义的翻页栏，避免宿主高度封顶时裁掉标题与说明。
+
+- 文生图：显示结果画廊；多张图用“上一张 / 下一张”浏览。
+- 图生图：每个结果同时显示原图和生成图，可拖动中间分隔线比较变化。
+- 为控制 WorkBuddy 消息体，结果卡中所有原图与生成图的原始字节总和不得超过 1.5 MiB；更大的文件继续使用主对话原生图片展示。
+- 原访谈卡不会被后续的另一个工具结果原地改写；WorkBuddy 会在同一对话中渲染一张新的、视觉一致的结果卡。这符合 MCP Apps 的 tool-result 渲染模型。
+
+若图片工具只返回宿主内部附件、没有本地路径或 `data:` 内容，主对话仍应原生展示图片，并如实说明本次无法生成结果画廊，不能伪造路径。
 
 ## 安全与兼容性
 
@@ -75,6 +151,6 @@ await app.sendMessage({
 - CSP 默认拒绝所有外部连接，只允许内联脚本、样式以及 `data:` / `blob:` 图片。
 - 图片生成发生在主对话，不发生在 iframe 或本地 MCP server。
 - 访谈状态以主对话为事实源，不写数据库、不上传附件。
-- 本衍生版本不使用上游品牌图片；上游代码遵循 Apache-2.0，归属见 `NOTICE` 与 `LICENSE`。
+- README 延续 Codex 发行版原有的苏哇科技动态标识；运行时访谈 UI 不额外添加旧版没有的品牌装饰。品牌使用边界见 `TRADEMARKS.md`。
 
 完整安装与验收步骤见 [INSTALL.md](INSTALL.md)。

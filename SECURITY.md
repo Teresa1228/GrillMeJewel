@@ -15,6 +15,6 @@ private conversations, or designer assets in a public issue.
 - It has no hosted backend, database, telemetry, or project-owned authentication.
 - It does not read or copy WorkBuddy credential/configuration files.
 - It does not request API keys. Image generation uses a tool already authorized in WorkBuddy.
-- Interview answers return only to the active conversation through `updateModelContext` and `ui/message`.
+- Interview answers return only to the active conversation through one `ui/message` submission.
 
 Install only from the official GitHub repository and verify release checksums when using archives.

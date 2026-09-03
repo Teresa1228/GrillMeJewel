@@ -1,41 +1,205 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { spawn, spawnSync } from "node:child_process";
 import test from "node:test";
+import { tmpdir } from "node:os";
+import vm from "node:vm";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const SERVER = resolve(ROOT, "plugins/grill-me-jewel/mcp/server.mjs");
-const HTML = resolve(ROOT, "plugins/grill-me-jewel/mcp/interview.html");
-const RESOURCE_URI = "ui://jewel-buddy/interview/v1.html";
+const SERVER = resolve(ROOT, "plugins/jewel-buddy/mcp/server.mjs");
+const HTML = resolve(ROOT, "plugins/jewel-buddy/mcp/interview.html");
+const SERVER_ID = "jewel-buddy";
+const RESOURCE_URI = "ui://jewel-buddy/interview/v4.html";
+const RESULTS_URI = "ui://jewel-buddy/results/v3.html";
+const TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
-function transact(messages) {
+function transact(messages, cwd = ROOT) {
   const input = `${messages.map((message) => JSON.stringify(message)).join("\n")}\n`;
-  const result = spawnSync(process.execPath, [SERVER, "--stdio"], { cwd: ROOT, input, encoding: "utf8" });
+  const result = spawnSync(process.execPath, [SERVER, "--stdio"], { cwd, input, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim().split("\n").filter(Boolean).map(JSON.parse);
 }
 
-test("MCP exposes one WorkBuddy interview tool and one Apps UI resource", () => {
+async function startHttpServer() {
+  const child = spawn(process.execPath, [SERVER, "--http", "--port", "0"], {
+    cwd: ROOT,
+    stdio: ["ignore", "ignore", "pipe"],
+  });
+  const port = await new Promise((resolvePort, reject) => {
+    let stderr = "";
+    const timer = setTimeout(() => reject(new Error(`HTTP MCP did not start: ${stderr}`)), 5000);
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+      const match = stderr.match(/http:\/\/127\.0\.0\.1:(\d+)\/mcp/);
+      if (!match) return;
+      clearTimeout(timer);
+      resolvePort(Number(match[1]));
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`HTTP MCP exited early with ${code}: ${stderr}`));
+    });
+  });
+  return { child, endpoint: `http://127.0.0.1:${port}` };
+}
+
+function extractClass(source, className) {
+  const start = source.indexOf(`class ${className}`);
+  assert.notEqual(start, -1, `${className} is missing`);
+  const bodyStart = source.indexOf("{", start);
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  throw new Error(`${className} is incomplete`);
+}
+
+test("MCP exposes interview and result tools through versioned Apps UI resources", () => {
   const responses = transact([
     { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } } },
     { jsonrpc: "2.0", id: 2, method: "tools/list" },
     { jsonrpc: "2.0", id: 3, method: "resources/list" },
     { jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: RESOURCE_URI } },
   ]);
-  assert.equal(responses[0].result.serverInfo.name, "jewel_buddy_ui");
-  assert.deepEqual(responses[1].result.tools.map(({ name }) => name), ["ask_grill_me_questions"]);
+  assert.equal(responses[0].result.serverInfo.name, SERVER_ID);
+  assert.deepEqual(responses[1].result.tools.map(({ name }) => name), ["ask_grill_me_questions", "show_jewel_results"]);
   assert.match(responses[1].result.tools[0].description, /four sequential discovery rounds/);
   assert.match(responses[1].result.tools[0].description, /delivery_count/);
-  assert.equal(responses[2].result.resources.length, 1);
+  assert.match(responses[1].result.tools[1].description, /draggable before\/after comparison/);
+  assert.equal(responses[2].result.resources.length, 2);
   assert.equal(responses[1].result.tools[0]._meta.ui.resourceUri, RESOURCE_URI);
+  assert.equal(responses[1].result.tools[0]._meta.ui.launchSurface, "inline");
+  assert.deepEqual(responses[1].result.tools[0]._meta.ui, {
+    resourceUri: RESOURCE_URI,
+    launchSurface: "inline",
+  });
+  assert.deepEqual(Object.keys(responses[1].result.tools[0]._meta), ["ui"]);
   assert.equal(responses[1].result.tools[0]._meta["openai/outputTemplate"], undefined);
+  assert.deepEqual(responses[1].result.tools[1]._meta.ui, {
+    resourceUri: RESULTS_URI,
+    launchSurface: "inline",
+  });
   assert.equal(responses[2].result.resources[0].uri, RESOURCE_URI);
+  assert.equal(responses[2].result.resources[1].uri, RESULTS_URI);
   assert.match(responses[3].result.contents[0].mimeType, /profile=mcp-app/);
   assert.ok(Buffer.byteLength(responses[3].result.contents[0].text) < 256 * 1024);
   assert.deepEqual(responses[3].result.contents[0]._meta.ui.csp, {});
   assert.deepEqual(responses[3].result.contents[0]._meta.ui.permissions, {});
   assert.equal(responses[3].result.contents[0]._meta.ui.prefersBorder, false);
+});
+
+test("result tool presents real images without leaking local paths", () => {
+  const [textToImage, imageToImage] = transact([
+    { jsonrpc: "2.0", id: 31, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "吊坠设计结果", mode: "text_to_image", items: [
+        { id: "infinity_pendant", title: "无限结吊坠", caption: "18K 金与温润弧线", result_data_uri: TINY_PNG },
+      ],
+    } } },
+    { jsonrpc: "2.0", id: 32, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "吊坠改款对比", mode: "image_to_image", items: [
+        { id: "softened_curve", title: "柔化曲线", source_data_uri: TINY_PNG, result_data_uri: TINY_PNG },
+      ],
+    } } },
+  ]);
+
+  assert.deepEqual(textToImage.result.content.map(({ type }) => type), ["text", "image"]);
+  assert.equal(textToImage.result.content[1].mimeType, "image/png");
+  assert.match(textToImage.result.structuredContent.gallery.items[0].resultDataUri, /^data:image\/png;base64,/);
+  assert.doesNotMatch(JSON.stringify(textToImage.result.structuredContent), /result_path|source_path/);
+  assert.deepEqual(imageToImage.result.content.map(({ type }) => type), ["text", "image", "image"]);
+  assert.equal(imageToImage.result.structuredContent.gallery.items[0].sourceContentIndex, 1);
+  assert.equal(imageToImage.result.structuredContent.gallery.items[0].resultContentIndex, 2);
+  assert.match(imageToImage.result.structuredContent.gallery.items[0].sourceDataUri, /^data:image\/png;base64,/);
+  assert.match(imageToImage.result.structuredContent.gallery.items[0].resultDataUri, /^data:image\/png;base64,/);
+  assert.equal(imageToImage.result._meta.ui.resourceUri, RESULTS_URI);
+});
+
+test("result gallery survives WorkBuddy structuredContent-only iframe delivery", () => {
+  const [response] = transact([
+    { jsonrpc: "2.0", id: 37, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "可见的吊坠设计", mode: "text_to_image", items: [
+        { id: "visible_pendant", title: "可见吊坠", result_data_uri: TINY_PNG },
+      ],
+    } } },
+  ]);
+
+  // WorkBuddy currently delivers structuredContent to the Apps iframe but omits content image blocks.
+  const deliveredToIframe = { structuredContent: response.result.structuredContent };
+  const item = deliveredToIframe.structuredContent.gallery.items[0];
+  assert.match(item.resultDataUri, /^data:image\/png;base64,/);
+});
+
+test("result tool rejects incomplete comparisons, unsafe paths, and false MIME claims", (t) => {
+  const cleanWorkspace = mkdtempSync(join(tmpdir(), "jewel-buddy-test-"));
+  t.after(() => rmSync(cleanWorkspace, { recursive: true, force: true }));
+  const [missingSource, relativePath, outsideOutput, falseMime] = transact([
+    { jsonrpc: "2.0", id: 33, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "缺失原图", mode: "image_to_image", items: [
+        { id: "missing_source", title: "缺失原图", result_data_uri: TINY_PNG },
+      ],
+    } } },
+    { jsonrpc: "2.0", id: 34, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "相对路径", mode: "text_to_image", items: [
+        { id: "relative_path", title: "相对路径", result_path: "generated.png" },
+      ],
+    } } },
+    { jsonrpc: "2.0", id: 35, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "输出目录外", mode: "text_to_image", items: [
+        { id: "outside_output", title: "输出目录外", result_path: resolve(ROOT, "plugins/jewel-buddy/assets/brand/logo-header.webp") },
+      ],
+    } } },
+    { jsonrpc: "2.0", id: 36, method: "tools/call", params: { name: "show_jewel_results", arguments: {
+      title: "伪造类型", mode: "text_to_image", items: [
+        { id: "false_mime", title: "伪造类型", result_data_uri: TINY_PNG.replace("image/png", "image/jpeg") },
+      ],
+    } } },
+  ], cleanWorkspace);
+  assert.match(missingSource.error.message, /source_path or source_data_uri/);
+  assert.match(relativePath.error.message, /must be absolute/);
+  assert.match(outsideOutput.error.message, /generated-images directory/);
+  assert.match(falseMime.error.message, /MIME type does not match/);
+});
+
+test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) => {
+  const { child, endpoint } = await startHttpServer();
+  t.after(() => child.kill());
+
+  const health = await fetch(`${endpoint}/health`).then((response) => response.json());
+  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.0" });
+
+  const post = (message) => fetch(`${endpoint}/mcp`, {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/event-stream",
+      "content-type": "application/json",
+      "mcp-protocol-version": "2025-11-25",
+    },
+    body: JSON.stringify(message),
+  });
+  const response = await post({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } },
+  });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /application\/json/);
+  const payload = await response.json();
+  assert.equal(payload.result.serverInfo.name, SERVER_ID);
+
+  const initialized = await post({ jsonrpc: "2.0", method: "notifications/initialized" });
+  assert.equal(initialized.status, 202);
+  const tools = await post({ jsonrpc: "2.0", id: 2, method: "tools/list" }).then((item) => item.json());
+  const resources = await post({ jsonrpc: "2.0", id: 3, method: "resources/list" }).then((item) => item.json());
+  const view = await post({ jsonrpc: "2.0", id: 4, method: "resources/read", params: { uri: RESOURCE_URI } }).then((item) => item.json());
+  assert.equal(tools.result.tools[0]._meta.ui.resourceUri, RESOURCE_URI);
+  assert.equal(resources.result.resources[0].uri, RESOURCE_URI);
+  assert.match(view.result.contents[0].mimeType, /profile=mcp-app/);
+  assert.match(view.result.contents[0].text, /正在载入访谈问题/);
 });
 
 test("interview call preserves stable ids and never puts media in structured content", () => {
@@ -53,8 +217,32 @@ test("interview call preserves stable ids and never puts media in structured con
   assert.equal(response.result.structuredContent.interview.stage, "foundation");
   assert.equal(response.result.structuredContent.interview.minimumDiscoveryRounds, 4);
   assert.equal(response.result._meta.ui.resourceUri, RESOURCE_URI);
+  assert.equal(response.result._meta.ui.launchSurface, "inline");
+  assert.deepEqual(Object.keys(response.result._meta), ["ui"]);
   assert.equal(response.result.content[0].type, "text");
   assert.doesNotMatch(JSON.stringify(response.result.structuredContent), /base64|data:image/);
+});
+
+test("interview accepts common option values that begin with digits", () => {
+  const [listed, response] = transact([
+    { jsonrpc: "2.0", id: 51, method: "tools/list" },
+    { jsonrpc: "2.0", id: 52, method: "tools/call", params: {
+      name: "ask_grill_me_questions", arguments: {
+        title: "选择材质", round: 1, stage: "foundation",
+        questions: [{
+          id: "material", label: "主要材质", type: "single", options: [
+            { value: "18k_gold", label: "18K 金" },
+            { value: "platinum", label: "铂金" },
+          ],
+        }],
+      },
+    } },
+  ]);
+  const optionPattern = listed.result.tools[0].inputSchema.properties.questions.items
+    .properties.options.items.properties.value.pattern;
+  assert.match("18k_gold", new RegExp(optionPattern));
+  assert.equal(response.error, undefined);
+  assert.equal(response.result.structuredContent.interview.questions[0].options[0].value, "18k_gold");
 });
 
 test("server rejects more than four questions and invalid option ids", () => {
@@ -79,23 +267,151 @@ test("server enforces four ordered discovery stages before confirmation", () => 
   assert.equal(validConfirmation.result.structuredContent.interview.stage, "confirmation");
 });
 
+test("skill keeps optional confirmation notes optional", () => {
+  const skill = readFileSync(resolve(ROOT, "plugins/jewel-buddy/skills/jewel-buddy/SKILL.md"), "utf8");
+  assert.match(skill, /required: false/);
+  assert.match(skill, /correction field/);
+});
+
 test("Apps UI feeds widget actions to the WorkBuddy conversation", () => {
   const html = readFileSync(HTML, "utf8");
+  assert.match(html, /<style>/);
+  assert.match(html, /正在载入访谈问题/);
   assert.match(html, /class WorkBuddyBridge/);
   assert.match(html, /new WorkBuddyBridge\(/);
-  assert.match(html, /request\("ui\/update-model-context",params\)/);
+  assert.doesNotMatch(html, /ui\/update-model-context/);
   assert.match(html, /request\("ui\/message",params\)/);
-  assert.match(html, /app\.updateModelContext\(/);
   assert.match(html, /app\.sendMessage\(/);
-  assert.ok(html.indexOf("app.updateModelContext(") < html.indexOf("app.sendMessage("));
+  assert.doesNotMatch(html, /await app\.updateModelContext\(/);
   assert.match(html, /codebuddy\.ai\/sendMessageMode/);
-  assert.match(html, /catch\(\(\)=>\{\}\)/);
   assert.match(html, /submitting/);
   assert.match(html, /otherText=\{\};submitting=false;render\(\)/);
   assert.match(html, /立即使用 WorkBuddy 当前可用的图片生成能力/);
   assert.match(html, /messageResult\?\.isError/);
+  assert.match(html, /parseGallery/);
+  assert.match(html, /renderGallery/);
+  assert.match(html, /拖动比较原图和生成图/);
+  assert.match(html, /contentImage/);
+  assert.match(html, /galleryImage/);
+  assert.match(html, /\$\{prefix\}DataUri/);
+  assert.match(html, /\$\{prefix\}ContentIndex/);
   assert.doesNotMatch(html, /esm\.sh/);
+  assert.doesNotMatch(html, /https?:\/\/|127\.0\.0\.1|__SDK_BASE__|<script[^>]+src=|<link[^>]+href=/);
+  assert.doesNotMatch(html, /event\.source\s*!==\s*window\.parent/);
   assert.doesNotMatch(html, /window\.openai|openai\/outputTemplate/);
+});
+
+test("Apps UI preserves the upstream Codex visual language and question cards", () => {
+  const html = readFileSync(HTML, "utf8");
+  assert.match(html, /<title>Grill Me 珠宝<\/title>/);
+  assert.match(html, /<div class="mark">GMJ<\/div>/);
+  assert.match(html, /Suwa Technology · Grill Me Jewel · Round \$\{active\.round\}/);
+  assert.match(html, /aria-label="\$\{escapeHtml\(active\.stageLabel\)\} · 第 \$\{active\.round\} 轮"/);
+  assert.doesNotMatch(html, /<div class="eyebrow">WorkBuddy/);
+  assert.match(html, /<div class="progress">\$\{index\+1\} \/ \$\{active\.questions\.length\}<\/div>/);
+  assert.doesNotMatch(html, /<div class="progress">\$\{roundProgress\}/);
+  assert.match(html, /--ink:#151515/);
+  assert.match(html, /--muted:#707070/);
+  assert.match(html, /--gold:#b88a35/);
+  assert.match(html, /\.app\{max-width:920px/);
+  assert.match(html, /\.options\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(html, /@media\(max-width:620px\).*\.options\{grid-template-columns:1fr\}/s);
+  assert.match(html, /option input:focus-visible\+span/);
+  assert.match(html, /<small>\$\{escapeHtml\(o\.description\)\}<\/small>/);
+  assert.match(html, /background:transparent/);
+});
+
+test("result cards fit WorkBuddy height limits without hiding metadata or controls", () => {
+  const html = readFileSync(HTML, "utf8");
+  assert.match(html, /\.visual\{[^}]*max-height:400px/);
+  assert.match(html, /\.result-stage\.has-navigation \.visual\{max-height:380px\}/);
+  assert.match(html, /const hasMultiple=gallery\.items\.length>1/);
+  assert.match(html, /hasMultiple\?`<nav class="gallery-nav"/);
+  assert.match(html, /getElementById\("previousResult"\)\?\./);
+  assert.match(html, /getElementById\("nextResult"\)\?\./);
+});
+
+test("server keeps the upstream Codex default interview title", () => {
+  const [response] = transact([{ jsonrpc: "2.0", id: 11, method: "tools/call", params: {
+    name: "ask_grill_me_questions", arguments: {
+      round: 1,
+      stage: "foundation",
+      questions: [{ id: "category", label: "先确定珠宝品类", type: "text" }],
+    },
+  } }]);
+  assert.equal(response.result.structuredContent.interview.title, "Grill Me 珠宝");
+});
+
+test("Apps UI sends WorkBuddy message metadata inside ui/message params", () => {
+  const html = readFileSync(HTML, "utf8");
+  const posted = [];
+  const parent = { postMessage(message) { posted.push(message); } };
+  const window = { parent, addEventListener() {} };
+  const source = extractClass(html, "WorkBuddyBridge")
+    .replace("class WorkBuddyBridge", "globalThis.WorkBuddyBridge=class WorkBuddyBridge");
+  const context = vm.createContext({ window, setTimeout: () => 1, clearTimeout() {} });
+  vm.runInContext(source, context);
+  const bridge = new context.WorkBuddyBridge({ name: "test", version: "1" });
+
+  void bridge.sendMessage({
+    role: "user",
+    content: [{ type: "text", text: "继续生成图片" }],
+    _meta: { "codebuddy.ai/sendMessageMode": "send" },
+  });
+
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].method, "ui/message");
+  assert.equal(posted[0]._meta, undefined);
+  assert.equal(posted[0].params._meta["codebuddy.ai/sendMessageMode"], "send");
+});
+
+test("Apps UI accepts WorkBuddy preload messages without a trusted event source", async () => {
+  const html = readFileSync(HTML, "utf8");
+  const posted = [];
+  let receiveMessage;
+  const parent = { postMessage(message) { posted.push(message); } };
+  const window = {
+    parent,
+    innerWidth: 640,
+    addEventListener(type, listener) {
+      if (type === "message") receiveMessage = listener;
+    },
+  };
+  const document = {
+    body: {
+      scrollWidth: 900,
+      scrollHeight: 880,
+    },
+    documentElement: {
+      scrollWidth: 870,
+      scrollHeight: 870,
+      getBoundingClientRect: () => ({ height: 600 }),
+    },
+  };
+  const source = extractClass(html, "WorkBuddyBridge")
+    .replace("class WorkBuddyBridge", "globalThis.WorkBuddyBridge=class WorkBuddyBridge");
+  const context = vm.createContext({ window, document, setTimeout: () => 1, clearTimeout() {} });
+  vm.runInContext(source, context);
+  const bridge = new context.WorkBuddyBridge({ name: "test", version: "1" });
+
+  const connecting = bridge.connect();
+  assert.equal(posted[0].method, "ui/initialize");
+  assert.deepEqual(Array.from(posted[0].params.appCapabilities.availableDisplayModes), ["inline", "fullscreen"]);
+
+  receiveMessage({
+    source: { not: "window.parent" },
+    data: {
+      jsonrpc: "2.0",
+      id: posted[0].id,
+      result: { protocolVersion: "2026-01-26", hostContext: { theme: "light" } },
+    },
+  });
+  await connecting;
+  assert.equal(posted[1].method, "ui/notifications/initialized");
+
+  bridge.reportSize();
+  assert.equal(posted[2].method, "ui/notifications/size-changed");
+  assert.deepEqual({ ...posted[2].params }, { width: 900, height: 880 });
 });
 
 test("Apps UI remains a single-question wizard with terminal loading and no nested scrolling", () => {

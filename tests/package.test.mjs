@@ -4,31 +4,57 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const PLUGIN = resolve(ROOT, "plugins/grill-me-jewel");
+const PLUGIN = resolve(ROOT, "plugins/jewel-buddy");
+
+test("repository exposes Jewel Buddy as a WorkBuddy marketplace plugin", () => {
+  const marketplace = JSON.parse(readFileSync(resolve(ROOT, ".codebuddy-plugin/marketplace.json"), "utf8"));
+  const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
+  assert.equal(marketplace.name, "jewel-buddy-marketplace");
+  assert.deepEqual(marketplace.plugins.map(({ name }) => name), ["jewel-buddy"]);
+  assert.equal(marketplace.plugins[0].source, "./plugins/jewel-buddy");
+  assert.equal(marketplace.plugins[0].name, manifest.name);
+  assert.equal(marketplace.plugins[0].version, manifest.version);
+});
 
 test("WorkBuddy plugin manifest and MCP identity are aligned", () => {
+  const rootPackage = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8"));
+  const marketplace = JSON.parse(readFileSync(resolve(ROOT, ".codebuddy-plugin/marketplace.json"), "utf8"));
   const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
   const mcp = JSON.parse(readFileSync(resolve(PLUGIN, ".mcp.json"), "utf8"));
   assert.equal(manifest.name, "jewel-buddy");
-  assert.equal(manifest.version, "0.1.0");
+  assert.equal(manifest.version, "0.3.0");
+  assert.equal(rootPackage.version, manifest.version);
+  assert.equal(marketplace.version, manifest.version);
+  assert.equal(marketplace.plugins[0].version, manifest.version);
   assert.equal(manifest.license, "Apache-2.0");
-  assert.deepEqual(Object.keys(mcp.mcpServers), ["jewel_buddy_ui"]);
-  assert.match(mcp.mcpServers.jewel_buddy_ui.args[0], /CODEBUDDY_PLUGIN_ROOT/);
+  assert.deepEqual(Object.keys(mcp.mcpServers), ["jewel-buddy"]);
+  assert.match(mcp.mcpServers["jewel-buddy"].args[0], /CODEBUDDY_PLUGIN_ROOT/);
 });
 
 test("the plugin contains one WorkBuddy skill with interview and image handoff rules", () => {
   const skillRoot = resolve(PLUGIN, "skills");
   const skills = readdirSync(skillRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && existsSync(resolve(skillRoot, entry.name, "SKILL.md")));
-  assert.deepEqual(skills.map(({ name }) => name), ["grill-me-jewel"]);
-  const skill = readFileSync(resolve(skillRoot, "grill-me-jewel/SKILL.md"), "utf8");
+  assert.deepEqual(skills.map(({ name }) => name), ["jewel-buddy"]);
+  const skill = readFileSync(resolve(skillRoot, "jewel-buddy/SKILL.md"), "utf8");
   assert.match(skill, /name: jewel-buddy/);
   assert.match(skill, /ask_grill_me_questions/);
   assert.match(skill, /image-generation tool available in WorkBuddy/);
+  assert.match(skill, /show_jewel_results/);
+  assert.match(skill, /source_path/);
   assert.match(skill, /four discovery stages/);
   assert.match(skill, /delivery_count/);
   assert.match(skill, /at least three visible design axes/);
   assert.doesNotMatch(skill, /\$imagegen|gpt-image-2|Codex/);
+});
+
+test("brand assets stay in the same supported surface as the Codex release", () => {
+  const readme = readFileSync(resolve(ROOT, "README.md"), "utf8");
+  assert.match(readme, /plugins\/jewel-buddy\/assets\/brand\/logo-header\.webp/);
+  assert.equal(existsSync(resolve(PLUGIN, "assets/brand/logo-header.webp")), true);
+  assert.equal(existsSync(resolve(PLUGIN, "assets/brand/logo-static.png")), false);
+  const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
+  assert.equal(manifest.interface, undefined);
 });
 
 test("the active WorkBuddy surface has no OpenAI host bridge dependency", () => {
@@ -37,7 +63,7 @@ test("the active WorkBuddy surface has no OpenAI host bridge dependency", () => 
     resolve(PLUGIN, ".mcp.json"),
     resolve(PLUGIN, "mcp/server.mjs"),
     resolve(PLUGIN, "mcp/interview.html"),
-    resolve(PLUGIN, "skills/grill-me-jewel/SKILL.md"),
+    resolve(PLUGIN, "skills/jewel-buddy/SKILL.md"),
   ];
   const joined = files.map((file) => readFileSync(file, "utf8")).join("\n");
   assert.doesNotMatch(joined, /window\.openai|openai\/outputTemplate|\.codex-plugin/);

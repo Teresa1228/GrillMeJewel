@@ -31,12 +31,22 @@ generation tool available in the current WorkBuddy session to generate the reque
    identity, wearing logic, and the central story.
 6. After four discovery rounds, present the assembled brief through one final
    `ask_grill_me_questions` confirmation round with `stage: confirmation` and `round` 5 or greater. Ask
-   whether to confirm it or revise it, with a text field for corrections when needed.
+   whether to confirm it or revise it, with a text field for corrections when needed. Set
+   `required: false` on that correction field and on every other field described as optional; never
+   make a confirmed user type a placeholder such as "no changes".
 7. After confirmation, read `references/image2-generation.md`, compile one production prompt per
    requested design, discover the real image-generation tool available in WorkBuddy, and invoke it.
    Prefer a native image tool or an installed image-generation MCP. The confirmed brief is the
    source of truth; do not resume interviewing during generation and never invent a tool result.
-8. Return the final brief in Markdown under: Objective, Product, Design Direction, Materials and
+8. Inspect the successful image tool result. When it returns real local absolute paths or PNG/JPEG/WebP
+   data URIs, call `show_jewel_results` exactly once with all requested results. Use
+   `mode: text_to_image` for generated images alone. Use `mode: image_to_image` only when both the
+   user's real source image and each generated result are available locally; pass `source_path` and
+   `result_path` so the UI can render a draggable before/after comparison. Do not pass a URL, invent
+   a path, or call the result tool before generation succeeds. If the image provider returns only a
+   host-private attachment, keep the native inline image and explain that the result card could not
+   be populated.
+9. Return the final brief in Markdown under: Objective, Product, Design Direction, Materials and
    Craft, Source Assets, Output Intent, Locked Facts, Flexible Details. Present every real generated
    image inline. Never claim an image exists unless the tool returned it.
 
@@ -45,6 +55,8 @@ generation tool available in the current WorkBuddy session to generate the reque
 - Keep each round to at most four fields and each option set to at most eight choices.
 - Prefer single choice for product identity and output intent, multi choice for style or motifs,
   and text only when the answer cannot be represented honestly with options.
+- Set `required: false` explicitly for optional fields. Omitted `required` defaults to true in the
+  Apps UI.
 - Make choices mutually understandable to a beginner. Avoid internal jewelry workflow jargon.
 - A known fact remains immutable unless the user explicitly corrects it.
 - Do not invent gemstone grade, origin, certification, size, budget, brand, or manufacturing facts.
@@ -67,3 +79,6 @@ generation tool available in the current WorkBuddy session to generate the reque
 - Confirm the selected WorkBuddy image tool returned the requested number of readable image assets. If image generation
   is unavailable or fails, report the real blocker and keep the confirmed brief for retry; do not
   present a text brief as completed visual delivery.
+- Confirm `show_jewel_results` received the same real image count whenever usable local paths or data
+  URIs were returned. For image-to-image work, confirm every result item includes its matching source
+  and result image so the comparison slider is truthful.

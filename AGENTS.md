@@ -28,5 +28,5 @@ npm run scan:public
 npm run doctor
 ```
 
-Validate the plugin with `codebuddy plugin validate ./plugins/grill-me-jewel`. A release requires an
+Validate the plugin with `codebuddy plugin validate ./plugins/jewel-buddy`. A release requires an
 Apps UI submission test in WorkBuddy Web UI and a real image-tool smoke test.

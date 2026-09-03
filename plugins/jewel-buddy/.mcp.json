@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "jewel_buddy_ui": {
+    "jewel-buddy": {
       "command": "node",
       "args": ["${CODEBUDDY_PLUGIN_ROOT}/mcp/server.mjs", "--stdio"]
     }

@@ -10,8 +10,8 @@ const ROOT = resolve(import.meta.dirname, "..");
 const SERVER = resolve(ROOT, "plugins/jewel-buddy/mcp/server.mjs");
 const HTML = resolve(ROOT, "plugins/jewel-buddy/mcp/interview.html");
 const SERVER_ID = "jewel-buddy";
-const RESOURCE_URI = "ui://jewel-buddy/interview/v4.html";
-const RESULTS_URI = "ui://jewel-buddy/results/v3.html";
+const RESOURCE_URI = "ui://jewel-buddy/interview/v5.html";
+const RESULTS_URI = "ui://jewel-buddy/results/v4.html";
 const TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
 function transact(messages, cwd = ROOT) {
@@ -70,7 +70,12 @@ test("MCP exposes interview and result tools through versioned Apps UI resources
   assert.deepEqual(responses[1].result.tools.map(({ name }) => name), ["ask_grill_me_questions", "show_jewel_results"]);
   assert.match(responses[1].result.tools[0].description, /four sequential discovery rounds/);
   assert.match(responses[1].result.tools[0].description, /delivery_count/);
+  assert.match(responses[1].result.tools[0].description, /primary user-facing response/i);
+  assert.match(responses[1].result.tools[0].description, /never from reasoning or analysis/i);
+  assert.match(responses[1].result.tools[0].description, /end the turn/i);
   assert.match(responses[1].result.tools[1].description, /draggable before\/after comparison/);
+  assert.match(responses[1].result.tools[1].description, /primary user-facing response/i);
+  assert.match(responses[1].result.tools[1].description, /never from reasoning or analysis/i);
   assert.equal(responses[2].result.resources.length, 2);
   assert.equal(responses[1].result.tools[0]._meta.ui.resourceUri, RESOURCE_URI);
   assert.equal(responses[1].result.tools[0]._meta.ui.launchSurface, "inline");
@@ -171,7 +176,7 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   t.after(() => child.kill());
 
   const health = await fetch(`${endpoint}/health`).then((response) => response.json());
-  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.2" });
+  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.3" });
 
   const post = (message) => fetch(`${endpoint}/mcp`, {
     method: "POST",
@@ -204,7 +209,7 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   assert.match(view.result.contents[0].text, /正在载入访谈问题/);
 
   const doctor = spawnSync(process.execPath, [
-    SERVER, "--inspect", `${endpoint}/mcp`, "--expect-version", "0.3.2",
+    SERVER, "--inspect", `${endpoint}/mcp`, "--expect-version", "0.3.3",
   ], { cwd: ROOT, encoding: "utf8" });
   assert.equal(doctor.status, 0, doctor.stderr);
   assert.match(doctor.stdout, /"tools":2/);
@@ -229,6 +234,8 @@ test("interview call preserves stable ids and never puts media in structured con
   assert.equal(response.result._meta.ui.launchSurface, "inline");
   assert.deepEqual(Object.keys(response.result._meta), ["ui"]);
   assert.equal(response.result.content[0].type, "text");
+  assert.match(response.result.content[0].text, /end this turn/);
+  assert.doesNotMatch(response.result.content[0].text, /第 \d+ 轮|问题|选项/);
   assert.doesNotMatch(JSON.stringify(response.result.structuredContent), /base64|data:image/);
 });
 
@@ -301,14 +308,17 @@ test("Apps UI feeds widget actions to the WorkBuddy conversation", () => {
   assert.match(html, /正在载入访谈问题/);
   assert.match(html, /class WorkBuddyBridge/);
   assert.match(html, /new WorkBuddyBridge\(/);
-  assert.doesNotMatch(html, /ui\/update-model-context/);
+  assert.match(html, /request\("ui\/update-model-context",params\)/);
   assert.match(html, /request\("ui\/message",params\)/);
   assert.match(html, /app\.sendMessage\(/);
-  assert.doesNotMatch(html, /await app\.updateModelContext\(/);
+  assert.match(html, /await app\.updateModelContext\(/);
   assert.match(html, /codebuddy\.ai\/sendMessageMode/);
   assert.match(html, /submitting/);
   assert.match(html, /otherText=\{\};submitting=false;render\(\)/);
-  assert.match(html, /立即使用 WorkBuddy 当前可用的图片生成能力/);
+  assert.match(html, /请直接展示下一轮表单/);
+  assert.match(html, /请按已确认 brief 生成并展示结果/);
+  assert.doesNotMatch(html, /Current widget context \(JSON\)/);
+  assert.doesNotMatch(html, /const summary=/);
   assert.match(html, /messageResult\?\.isError/);
   assert.match(html, /parseGallery/);
   assert.match(html, /renderGallery/);
@@ -385,6 +395,14 @@ test("Apps UI sends WorkBuddy message metadata inside ui/message params", () => 
   assert.equal(posted[0].method, "ui/message");
   assert.equal(posted[0]._meta, undefined);
   assert.equal(posted[0].params._meta["codebuddy.ai/sendMessageMode"], "send");
+
+  void bridge.updateModelContext({
+    content: [{ type: "text", text: "hidden state" }],
+    structuredContent: { round: 1 },
+  });
+  assert.equal(posted[1].method, "ui/update-model-context");
+  assert.equal(posted[1].params.content[0].text, "hidden state");
+  assert.equal(posted[1].params.structuredContent.round, 1);
 });
 
 test("Apps UI accepts WorkBuddy preload messages without a trusted event source", async () => {
@@ -444,7 +462,6 @@ test("Apps UI remains a single-question wizard with terminal loading and no nest
   assert.match(html, /overflow:hidden/);
   assert.doesNotMatch(html, /overflow-y\s*:\s*(?:auto|scroll)/);
   assert.doesNotMatch(html, /type=["']file["']/);
-  assert.match(html, /Current widget context \(JSON\)/);
   assert.match(html, /minimumDiscoveryRounds/);
   assert.match(html, /active\.stageLabel/);
   assert.match(html, /schemaVersion:2/);

@@ -46,8 +46,8 @@ no server database or cache is used.
 - Apps UI iframe: `2026-01-26`, JSON-RPC over `window.postMessage`.
 - Resource MIME: `text/html;profile=mcp-app`.
 - MCP server identity and URI authority: `jewel-buddy`.
-- Interview resource URI: `ui://jewel-buddy/interview/v4.html`.
-- Result resource URI: `ui://jewel-buddy/results/v3.html`.
+- Interview resource URI: `ui://jewel-buddy/interview/v5.html`.
+- Result resource URI: `ui://jewel-buddy/results/v4.html`.
 
 The verified interview stays on v4; the result surface is v3 so WorkBuddy cannot reuse the earlier
 content-index-only or oversized gallery. A generated image tool result is not broadcast to an

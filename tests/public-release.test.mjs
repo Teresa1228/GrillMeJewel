@@ -24,11 +24,12 @@ test("README and install guide document the WorkBuddy plugin flow", () => {
   assert.match(readme, /连接器 → 自定义连接/);
   assert.match(readme, /2\/2 个工具已启用、2 个资源/);
   assert.match(readme, /不要回退到原生对话卡片/);
-  assert.match(readme, /`ui:\/\/jewel-buddy\/interview\/v4\.html` 是资源标识/);
+  assert.match(readme, /`ui:\/\/jewel-buddy\/interview\/v5\.html` 是资源标识/);
   assert.match(readme, /show_jewel_results/);
   assert.match(readme, /图生图/);
   assert.match(readme, /新的、视觉一致的结果卡/);
-  assert.doesNotMatch(readme, /await app\.updateModelContext/);
+  assert.match(readme, /await app\.updateModelContext/);
+  assert.match(readme, /不把内部 JSON 塞进可见对话/);
   assert.match(install, /git clone --branch codex\/workbuddy-port --single-branch/);
   assert.match(install, /npm run install:workbuddy/);
   assert.match(install, /npm run doctor:workbuddy/);
@@ -52,5 +53,6 @@ test("troubleshooting records the high-frequency WorkBuddy failure modes", () =>
   assert.match(guide, /no separate Widget frontend server/);
   assert.match(guide, /increment that resource URI/);
   assert.match(guide, /images\[\]\.localPath/);
-  assert.match(guide, /results\/v3\.html/);
+  assert.match(guide, /results\/v4\.html/);
+  assert.match(guide, /Apps UI appears inside collapsed deep thinking/);
 });

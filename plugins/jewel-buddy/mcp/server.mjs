@@ -7,10 +7,10 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const SERVER_NAME = "jewel-buddy";
-const SERVER_VERSION = "0.3.2";
+const SERVER_VERSION = "0.3.3";
 const MCP_VERSION = "2025-11-25";
-const RESOURCE_URI = "ui://jewel-buddy/interview/v4.html";
-const RESULTS_URI = "ui://jewel-buddy/results/v3.html";
+const RESOURCE_URI = "ui://jewel-buddy/interview/v5.html";
+const RESULTS_URI = "ui://jewel-buddy/results/v4.html";
 const HTML_PATH = fileURLToPath(new URL("./interview.html", import.meta.url));
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 // WorkBuddy forwards structuredContent, but not image content blocks, to the Apps iframe.
@@ -132,7 +132,7 @@ function normalizeInterview(args) {
 function interviewToolDescriptor() {
   return {
     name: "ask_grill_me_questions",
-    description: "Present one Grill Me Jewel interview round in WorkBuddy. Complete foundation, meaning, design_language, and variation_delivery as four sequential discovery rounds before a separate confirmation round. Ask 1-4 unresolved questions per round, collect delivery_count once when absent, and define wide candidate variation for multi-image delivery. Set required:false explicitly for every optional field, including confirmation correction notes. The UI shows one question at a time and returns stable answer ids to the main WorkBuddy conversation.",
+    description: "Present one Grill Me Jewel interview round as the primary user-facing response in WorkBuddy. Call it first, with no prose preamble, from a normal visible assistant response; never from reasoning or analysis. Complete foundation, meaning, design_language, and variation_delivery as four sequential discovery rounds before a separate confirmation round. Ask 1-4 unresolved questions per round, collect delivery_count once when absent, and set required:false for optional fields. After this tool succeeds, end the turn without repeating questions, options, answers, progress, or the roadmap.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -194,7 +194,7 @@ function imageInputSchema(prefix) {
 function resultToolDescriptor() {
   return {
     name: "show_jewel_results",
-    description: "Render real jewelry images after an image-generation tool has succeeded. Call this only with generated result paths inside the current workspace generated-images directory or data URIs actually returned by that tool. Use text_to_image for generated results alone, or image_to_image with both source and result for a draggable before/after comparison. This tool only reads and presents images; it does not generate, upload, or store them.",
+    description: "Render real jewelry images as the primary user-facing response after an image-generation tool succeeds. Call it first, with no prose preamble, from a normal visible assistant response; never from reasoning or analysis. Call it only with generated result paths inside the current workspace generated-images directory or data URIs actually returned by that tool. Use text_to_image for generated results alone, or image_to_image with both source and result for a draggable before/after comparison. After this tool succeeds, end the turn without duplicating the gallery, images, or brief. This tool only reads and presents images; it does not generate, upload, or store them.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -309,7 +309,7 @@ function normalizeGallery(args) {
   const mode = text(args.mode, "mode", 30);
   if (!new Set(["text_to_image", "image_to_image"]).has(mode)) throw new Error("mode is unsupported");
   if (!Array.isArray(args.items) || args.items.length < 1 || args.items.length > 8) throw new Error("items must contain 1-8 images");
-  const content = [{ type: "text", text: `已生成 ${args.items.length} 个真实珠宝设计结果，并已在 Jewel Buddy 结果卡中展示。` }];
+  const content = [{ type: "text", text: "Result UI ready. Do not repeat the gallery, images, or brief; end this turn." }];
   let galleryBytes = 0;
   const items = args.items.map((raw, index) => {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`item ${index + 1} must be an object`);
@@ -364,7 +364,7 @@ function normalizeGallery(args) {
 function callInterviewTool(params) {
   const interview = normalizeInterview(params.arguments || {});
   return {
-    content: [{ type: "text", text: `请在 Grill Me 珠宝表单中完成第 ${interview.round} 轮回答。` }],
+    content: [{ type: "text", text: "UI ready. Do not repeat its questions or roadmap; end this turn and wait for submission." }],
     structuredContent: { interview },
     _meta: toolUiMeta(),
   };

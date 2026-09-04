@@ -1,4 +1,4 @@
-# Jewel Buddy 0.3.2 Release Checklist
+# Jewel Buddy 0.3.3 Release Checklist
 
 Use this checklist once for a GitHub release. It is not an installer and does not create a
 recurring task.
@@ -6,7 +6,7 @@ recurring task.
 ## Repository
 
 - [ ] `package.json`, marketplace metadata, plugin manifest, and MCP `serverInfo.version` all say
-      `0.3.2`.
+      `0.3.3`.
 - [ ] `.codebuddy-plugin/marketplace.json` is tracked and points to `./plugins/jewel-buddy`.
 - [ ] The public plugin contains exactly one Skill: `plugins/jewel-buddy/skills/jewel-buddy`.
 - [ ] `git status --short --ignored` shows local `.workbuddy/` and `generated-images/` only as
@@ -37,11 +37,14 @@ pass/fail message; an interrupted process is not a pass.
 2. Open WorkBuddy's MCP/connector page, enable `jewel-buddy`, then start a new conversation.
 3. Send: `用 Jewel Buddy 帮我设计一件送给母亲的吊坠；请用可视化表单逐步确认需求，确认后生成并展示设计图。`
 4. Verify four discovery rounds and a separate confirmation round render as inline Apps UI.
-5. Verify every submission produces one user message and automatically advances.
-6. Confirm the brief and verify a real image tool returns the requested number of readable images.
-7. Verify the agent calls `show_jewel_results` with those real paths and a second inline result card
+5. Verify every assistant turn is UI-first: the card remains visible when deep thinking is collapsed,
+   and no question list, answer recap, roadmap, or brief is duplicated before or after the card.
+6. Verify every submission produces one short user message, keeps the structured answers out of the
+   visible conversation, and automatically advances.
+7. Confirm the brief and verify a real image tool returns the requested number of readable images.
+8. Verify the agent calls `show_jewel_results` with those real paths and a second inline result card
    renders the same count.
-8. Run one image-to-image case and drag the comparison divider from 0 to 100; confirm the left/right
+9. Run one image-to-image case and drag the comparison divider from 0 to 100; confirm the left/right
    source and result labels match the visible images.
 
 For gray placeholders, stale cards, duplicate connectors, identity mismatches, port conflicts, or
@@ -51,7 +54,7 @@ missing image tools, stop and follow [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOT
 
 - [ ] Update `CHANGELOG.md` and release notes.
 - [ ] Commit the reviewed worktree.
-- [ ] Tag the exact commit as `v0.3.2` and push the tag.
+- [ ] Tag the exact commit as `v0.3.3` and push the tag.
 - [ ] Confirm the GitHub Actions Release workflow passes on macOS and Windows.
 - [ ] Download the generated ZIP, verify its SHA-256 file, and inspect the archive contents before
       sharing the release.

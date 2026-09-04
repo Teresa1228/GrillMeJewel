@@ -6,7 +6,7 @@ The plugin name, MCP key, `serverInfo.name`, and `ui://` authority must all be `
 Aliases such as `grill-me-jewel`, `wb_jewelry_ui`, or `jewel_buddy_ui` can leave the renderer on a
 gray placeholder because the host cannot associate the tool with its UI Resource.
 
-`ui://jewel-buddy/interview/v4.html` is a resource identifier, not a network address. Never add
+`ui://jewel-buddy/interview/v5.html` is a resource identifier, not a network address. Never add
 `http://` to it. Only an HTTP MCP backend uses `http://127.0.0.1:39528/mcp`.
 
 ## Skill is not visible
@@ -108,10 +108,24 @@ path and do not replace the failed Apps UI with a native conversation card.
 
 ## Form submits but the interview does not continue
 
-Confirm the host supports `ui/message`. The widget sends one message with
-`_meta['codebuddy.ai/sendMessageMode'] = 'send'`; it must contain a readable summary and
-`Current widget context (JSON)`. A successful form click that only fills the composer indicates the
-host did not honor send mode.
+Confirm the host supports both `ui/update-model-context` and `ui/message`. The widget first sends the
+complete structured submission as model context, then sends one short visible message with
+`_meta['codebuddy.ai/sendMessageMode'] = 'send'`. A successful form click that only fills the composer
+indicates the host did not honor send mode. The main conversation should not display raw JSON or a
+second copy of the answers.
+
+## Apps UI appears inside collapsed deep thinking
+
+The card follows the WorkBuddy timeline position of its tool call. Jewel Buddy requests an inline
+Apps surface, but MCP metadata does not provide a separate “outside reasoning” placement switch.
+Current prompts require the tool call to be the first item in a normal visible assistant response,
+with no prose preamble, and require the turn to end as soon as the card opens.
+
+Test this in a new conversation after reinstalling. If the first live card is still grouped under
+deep thinking but becomes visible after reopening the conversation, record the WorkBuddy version and
+report it as a host rendering race: the plugin cannot rebuild the host's already-created fold tree.
+Do not work around it by replacing the Apps UI with native cards or by repeating the questions in
+prose.
 
 ## Image generation does not start
 
@@ -140,8 +154,8 @@ unsupported inputs rather than weakening the file checks.
 
 ## Result image is visible but the title or controls are clipped
 
-Update to the build that exposes `ui://jewel-buddy/results/v3.html`, run `/reload-plugins` once, and
-create a new result card. Result UI v3 reports the maximum body/document content size instead of the
+Update to the build that exposes `ui://jewel-buddy/results/v4.html`, run `/reload-plugins` once, and
+create a new result card. Result UI v4 reports the maximum body/document content size instead of the
 current iframe viewport, bounds the image stage, and omits the disabled navigation row for a
 single-image result. Existing v1/v2 cards are immutable and will remain clipped.
 
@@ -151,7 +165,7 @@ Run `/reload-plugins` only after installation, update, or source changes, then s
 conversation. If developing with `--plugin-dir`, stop and restart that process when the old MCP
 remains registered. After changing an existing Widget contract, increment that resource URI and
 update its tests/docs so the host cannot reuse cached HTML. The interview remains
-`interview/v4.html`; the result gallery has its own cache boundary at `results/v3.html`.
+`interview/v5.html`; the result gallery has its own cache boundary at `results/v4.html`.
 
 ## Plugin name conflict
 

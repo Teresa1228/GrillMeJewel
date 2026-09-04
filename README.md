@@ -4,7 +4,7 @@
   <img src="plugins/jewel-buddy/assets/brand/logo-header.webp" alt="苏哇科技 GrillMeJewel" width="176">
 </p>
 
-Jewel Buddy `0.3.2` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
+Jewel Buddy `0.3.3` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
 
 ![Jewel Buddy 内嵌访谈界面](docs/images/apps-ui-interview.png)
 
@@ -24,7 +24,8 @@ Jewel Buddy `0.3.2` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 主对话调用 ask_grill_me_questions
   → WorkBuddy 根据 _meta.ui.resourceUri 与 launchSurface:inline 内联渲染 widget
   → 用户在 widget 中完成本轮回答
-  → app.sendMessage(send) 一次性回写摘要与结构化 JSON，并立即唤起 agent
+  → app.updateModelContext 隐式回写完整结构化答案
+  → app.sendMessage(send) 只显示一句简短续接消息，并立即唤起 agent
   → agent 继续访谈；最终确认后调用真实图片生成工具
   → 图片由 WorkBuddy 主对话原生展示
   → agent 再调用 show_jewel_results，把真实结果回显为同风格 Apps UI 画廊
@@ -77,7 +78,7 @@ WorkBuddy 通过连接器开关使用本机 `jewel-buddy` HTTP server，操作�
 | `--plugin-dir` | 开发者直接测试当前 checkout | 否 |
 | 手动 HTTP 开发 | 开发者临时观察协议与日志 | 是，终端必须保持运行；不要与托管服务同时启动 |
 
-所有模式的插件名、MCP key、`serverInfo.name` 和 `ui://` authority 都必须是 `jewel-buddy`。`ui://jewel-buddy/interview/v4.html` 是资源标识，**不能**改成 `http://`。一键连接器的后端地址是 `http://127.0.0.1:39528/mcp`；它由操作系统托管，不是需要手工保持的开发服务器。
+所有模式的插件名、MCP key、`serverInfo.name` 和 `ui://` authority 都必须是 `jewel-buddy`。`ui://jewel-buddy/interview/v5.html` 是资源标识，**不能**改成 `http://`。一键连接器的后端地址是 `http://127.0.0.1:39528/mcp`；它由操作系统托管，不是需要手工保持的开发服务器。
 
 连接器预览与 Marketplace 插件模式二选一；不要同时启动两个同名 server。完整诊断步骤见 [Troubleshooting](docs/TROUBLESHOOTING.md)。
 
@@ -105,7 +106,7 @@ npm run serve:http
 ```
 
 它只监听 `http://127.0.0.1:39528/mcp`；这是 MCP 后端端点。Widget 本身仍由
-`resources/read` 返回，资源标识必须保持 `ui://jewel-buddy/interview/v4.html`，不需要
+`resources/read` 返回，资源标识必须保持 `ui://jewel-buddy/interview/v5.html`，不需要
 再启动一套 Widget 前端服务器。
 
 macOS 的 WorkBuddy Desktop 若没有把 `codebuddy` 加到 `PATH`，可直接使用应用内置 CLI：
@@ -133,21 +134,26 @@ MCP Apps 只在 WorkBuddy/CodeBuddy Web UI 或 IDE 内嵌 Web UI 中展示；终
 
 ## widget 如何“喂”给主对话
 
-提交时 widget 只调用一次 `ui/message`：
+提交时 widget 先更新模型上下文，再用一条简短消息继续对话：
 
 ```js
+await app.updateModelContext({
+  content: [{ type: "text", text: structuredSubmission }],
+  structuredContent: { jewelBuddySubmission: payload },
+});
+
 await app.sendMessage({
   role: "user",
-  content: [{ type: "text", text: messageWithSummaryAndStableJson }],
+  content: [{ type: "text", text: "已提交 Jewel Buddy 第 1 轮；请直接展示下一轮表单。" }],
   _meta: { "codebuddy.ai/sendMessageMode": "send" },
 });
 ```
 
-`send` 会把消息写成主对话中的用户气泡并立即触发 agent。摘要和完整 JSON 都放在这一次 `ui/message` 的文本中，避免先注入 model context 再发送消息造成重复触发或输入框附件。确认轮的消息会明确要求 WorkBuddy 调用真实图片生成能力；MCP server 本身不持有密钥、不调用图片供应商，也不会伪造生成成功。
+`ui/update-model-context` 把稳定 id、显示标签和答案交给下一次模型调用，但不把内部 JSON 塞进可见对话。`send` 只写入一句简短用户气泡并立即触发 agent。确认轮同样只显示一句生成指令；MCP server 本身不持有密钥、不调用图片供应商，也不会伪造生成成功。
 
 ## 图片结果闭环
 
-真实图片工具成功后，主对话调用同一 MCP 的 `show_jewel_results`。它只读取图片工具明确返回且位于当前工作区 `generated-images/` 的本地结果路径，或接收其返回的 `data:` 图片；不会请求图片供应商、上传文件或保存副本。结果同时作为标准 MCP image content 和受大小限制的 `structuredContent` 图片数据回传：前者供主对话原生展示，后者兼容 WorkBuddy 只把 `structuredContent` 交给 Apps iframe 的行为。两条结果都不包含本地路径。结果卡 v3 限制图片展示高度，并在单图时省略无意义的翻页栏，避免宿主高度封顶时裁掉标题与说明。
+真实图片工具成功后，主对话调用同一 MCP 的 `show_jewel_results`。它只读取图片工具明确返回且位于当前工作区 `generated-images/` 的本地结果路径，或接收其返回的 `data:` 图片；不会请求图片供应商、上传文件或保存副本。结果同时作为标准 MCP image content 和受大小限制的 `structuredContent` 图片数据回传：前者供主对话原生展示，后者兼容 WorkBuddy 只把 `structuredContent` 交给 Apps iframe 的行为。两条结果都不包含本地路径。结果卡 v4 限制图片展示高度，并在单图时省略无意义的翻页栏，避免宿主高度封顶时裁掉标题与说明。
 
 - 文生图：显示结果画廊；多张图用“上一张 / 下一张”浏览。
 - 图生图：每个结果同时显示原图和生成图，可拖动中间分隔线比较变化。

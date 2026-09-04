@@ -11,6 +11,17 @@ Help a beginner discover and articulate what jewelry they want to design. Comple
 discovery rounds plus a separate confirmation round, preserve every answer, then use an image
 generation tool available in the current WorkBuddy session to generate the requested real designs.
 
+## Visible Response Contract
+
+- The Apps UI card is the primary and only user-facing response during interview rounds and final
+  result delivery. Place each UI tool call first in a normal visible assistant response, with no
+  prose preamble. If the host requires text before a tool call, use at most one short sentence.
+- Never invoke either UI tool from analysis, reasoning, or hidden planning. Do not put a roadmap,
+  question list, answer recap, brief, or usage instructions before or after the card.
+- After the UI tool succeeds, end the turn immediately. Do not restate the card's questions, options,
+  answers, progress, gallery, images, or next step. If the host requires trailing text, use one short
+  sentence only.
+
 ## Interview
 
 1. Read `references/design-frontier.md`. Reuse facts from the conversation and attachments, then
@@ -26,8 +37,9 @@ generation tool available in the current WorkBuddy session to generate the reque
    outside the list. In foundation, ask `delivery_count` unless the user already supplied a count;
    offer `count_1`, `count_2`, `count_4`, `count_8`, and a custom value. Never ask for providers,
    concurrency, internal job ids, API keys, or cost.
-4. After submission, summarize only the newly established facts and preserve all earlier answers.
-   Continue with the next stage; never answer the user's side of the interview.
+4. After submission, update the accumulated state silently from the widget context and continue with
+   the next stage. Never repeat the submitted answers in prose and never answer the user's side of the
+   interview.
 5. In variation/delivery, split locked facts from flexible axes. For multiple outputs, define named
    candidate branches that each change at least three visible design axes while preserving product
    identity, wearing logic, and the central story.
@@ -48,9 +60,9 @@ generation tool available in the current WorkBuddy session to generate the reque
    a path, or call the result tool before generation succeeds. If the image provider returns only a
    host-private attachment, keep the native inline image and explain that the result card could not
    be populated.
-9. Return the final brief in Markdown under: Objective, Product, Design Direction, Materials and
-   Craft, Source Assets, Output Intent, Locked Facts, Flexible Details. Present every real generated
-   image inline. Never claim an image exists unless the tool returned it.
+9. Treat the successful `show_jewel_results` card as the complete visible delivery and end the turn.
+   Only if that result UI cannot be rendered, return a compact Markdown brief and the real generated
+   images inline, clearly naming the UI blocker. Never claim an image exists unless the tool returned it.
 
 ## Question Design
 

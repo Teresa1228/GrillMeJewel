@@ -46,6 +46,7 @@
         });
       }
       notify(method,params){this.send({jsonrpc:"2.0",method,params})}
+      updateModelContext(params){return this.request("ui/update-model-context",params)}
       sendMessage(params){return this.request("ui/message",params)}
       receive(event){
         const message=event?.data;
@@ -92,7 +93,7 @@
 
     let active=null,index=0,answers={},otherText={},submitting=false,received=false,galleryState=null,galleryIndex=0;
     const root=document.getElementById("app");
-    const app=new WorkBuddyBridge({name:"jewel-buddy-interview",version:"0.3.2",autoResize:true});
+    const app=new WorkBuddyBridge({name:"jewel-buddy-interview",version:"0.3.3",autoResize:true});
     const parseInterview=(value,depth=0)=>{if(depth>8||value==null)return null;if(typeof value==="string"){try{return parseInterview(JSON.parse(value),depth+1)}catch{return null}}if(Array.isArray(value)){for(const item of value){const found=parseInterview(item,depth+1);if(found)return found}return null}if(typeof value!=="object")return null;if(value.interview?.questions)return value.interview;if(value.structuredContent)return parseInterview(value.structuredContent,depth+1);if(value.result)return parseInterview(value.result,depth+1);if(value.content)return parseInterview(value.content,depth+1);if(value.text)return parseInterview(value.text,depth+1);return null};
     const parseGallery=(value,depth=0)=>{if(depth>8||value==null)return null;if(typeof value==="string"){try{return parseGallery(JSON.parse(value),depth+1)}catch{return null}}if(Array.isArray(value)){for(const item of value){const found=parseGallery(item,depth+1);if(found)return found}return null}if(typeof value!=="object")return null;if(value.structuredContent?.gallery?.items)return{gallery:value.structuredContent.gallery,content:Array.isArray(value.content)?value.content:[]};if(value.gallery?.items)return{gallery:value.gallery,content:Array.isArray(value.content)?value.content:[]};if(value.result)return parseGallery(value.result,depth+1);return null};
     const toolError=(value,depth=0)=>{if(depth>8||value==null)return "";if(typeof value==="string"){try{return toolError(JSON.parse(value),depth+1)}catch{return ""}}if(Array.isArray(value)){for(const item of value){const found=toolError(item,depth+1);if(found)return found}return ""}if(typeof value!=="object")return "";if(value.isError){const message=Array.isArray(value.content)?value.content.find(item=>item?.type==="text")?.text:"";return message||value.error?.message||"表单载入失败。"}for(const key of ["result","structuredContent","content","text"]){const found=toolError(value[key],depth+1);if(found)return found}return ""};
@@ -115,13 +116,19 @@
       submitting=true;
       const submitButton=document.getElementById("submit");
       if(submitButton)submitButton.disabled=true;
-      const payload={schemaVersion:2,round:active.round,stage:active.stage,minimumDiscoveryRounds:active.minimumDiscoveryRounds,answers:active.questions.map(q=>({id:q.id,value:answers[q.id]??(q.type==="multi"?[]:""),...(otherText[q.id]?{otherText:otherText[q.id]}:{})}))};
-      const summary=active.questions.map(q=>`- ${q.label}：${answerLabel(q)||"未填写"}`).join("\n");
-      const nextInstruction=active.stage==="confirmation"
-        ?"请读取本轮确认结果：如果 brief 已确认，立即使用 WorkBuddy 当前可用的图片生成能力，按约定数量生成独立珠宝设计图并在主对话中展示；生成成功后读取工具返回的真实本地绝对路径，再调用 jewel-buddy 的 show_jewel_results：文生图使用 text_to_image，图生图同时传 source_path 与 result_path。不得编造路径或成功结果。如果用户要求修改，请先修订 brief 并再次确认。"
-        :"请保留本轮回答，继续 Grill Me 珠宝的下一个未完成阶段，不要重复询问已经确认的事实。";
-      const message=`已完成 Grill Me 珠宝第 ${active.round} 轮【${active.stageLabel}】。\n${summary}\n${nextInstruction}\nCurrent widget context (JSON): ${JSON.stringify(payload)}`;
+      const payload={schemaVersion:2,round:active.round,stage:active.stage,stageLabel:active.stageLabel,minimumDiscoveryRounds:active.minimumDiscoveryRounds,answers:active.questions.map(q=>({id:q.id,label:q.label,value:answers[q.id]??(q.type==="multi"?[]:""),displayValue:answerLabel(q)||"未填写",...(otherText[q.id]?{otherText:otherText[q.id]}:{})}))};
+      const instruction=active.stage==="confirmation"
+        ?"读取确认结果；已确认时按 brief 调用真实图片生成工具，成功后用真实结果调用 show_jewel_results。要求修改时先修订并再次确认。"
+        :"保留本轮回答，直接调用 ask_grill_me_questions 展示下一个未完成阶段；不要用正文复述答案、题目或流程。";
+      const context=`Jewel Buddy structured submission.\n${JSON.stringify(payload)}\nInstruction: ${instruction}`;
+      const message=active.stage==="confirmation"
+        ?"已提交 Jewel Buddy 确认；请按已确认 brief 生成并展示结果。"
+        :`已提交 Jewel Buddy 第 ${active.round} 轮；请直接展示下一轮表单。`;
       try{
+        await app.updateModelContext({
+          content:[{type:"text",text:context}],
+          structuredContent:{jewelBuddySubmission:payload},
+        });
         const messageResult=await app.sendMessage({
           role:"user",
           content:[{type:"text",text:message}],

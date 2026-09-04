@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.3 - 2026-09-04
+
+- Made the Apps UI card the primary visible response for every interview and result turn. The Skill
+  and tool descriptions now require calls from a normal visible assistant response and immediate
+  turn completion, without duplicating questions, answers, roadmaps, briefs, or galleries in prose.
+- Moved full widget submissions to `ui/update-model-context`. The visible `ui/message` is now one
+  short continuation sentence, while stable ids, display labels, and answers remain available to the
+  next model call without filling the conversation with internal JSON or answer summaries.
+- Bumped the interview and result resource cache boundaries to `interview/v5.html` and
+  `results/v4.html`, so WorkBuddy cannot reuse the earlier widget template after upgrade.
+- Added regression coverage for visible-call placement instructions, post-UI silence, compact widget
+  messages, and the WorkBuddy model-context bridge.
+
 ## 0.3.2 - 2026-09-03
 
 - Fixed a false-green installer check where the stdio MCP and Skill were healthy but WorkBuddy's

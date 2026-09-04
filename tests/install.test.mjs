@@ -61,7 +61,7 @@ test("managed service definitions restart the local MCP without a terminal", () 
     configDir: "/tmp/workbuddy-profile",
     homeDirectory: "/tmp/user-root",
     platformName: "darwin",
-    version: "0.3.3",
+    version: "0.3.4",
   });
   const macDefinition = renderManagedService(mac);
   assert.match(macDefinition, /<key>KeepAlive<\/key><true\/>/);
@@ -76,7 +76,7 @@ test("managed service definitions restart the local MCP without a terminal", () 
     homeDirectory: "C:\\Users\\tester",
     appData: "C:\\Users\\tester\\AppData\\Roaming",
     platformName: "win32",
-    version: "0.3.3",
+    version: "0.3.4",
   });
   assert.match(renderManagedService(windows), /start "" \/min/);
   assert.match(windows.servicePath, /Jewel Buddy MCP\.cmd$/);
@@ -89,7 +89,7 @@ test("macOS managed service installation retries launchd's transient bootstrap f
     configDir: "/tmp/workbuddy-profile",
     homeDirectory: "/tmp/user-root",
     platformName: "darwin",
-    version: "0.3.3",
+    version: "0.3.4",
   });
   const calls = [];
   const waits = [];
@@ -120,7 +120,7 @@ test("macOS managed service installation reports permanent bootstrap failures im
     configDir: "/tmp/workbuddy-profile",
     homeDirectory: "/tmp/user-root",
     platformName: "darwin",
-    version: "0.3.3",
+    version: "0.3.4",
   });
   let bootstrapAttempts = 0;
   const waits = [];

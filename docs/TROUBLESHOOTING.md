@@ -137,8 +137,15 @@ honestly; do not add an API key to Jewel Buddy and do not treat a text brief as 
 ## Image exists in chat but the result gallery is missing
 
 The image generator and Jewel Buddy are separate tools. After a successful ImageGen call, the main
-conversation must read the returned `images[].localPath` and call `show_jewel_results` once. The
+conversation must read the returned `images[].localPath`, finish native image/file presentation, and
+only then call `show_jewel_results` once. Never run generation, native presentation, and the result UI
+in parallel or in the same tool-call batch. The
 result tool accepts only real PNG, JPEG, or WebP content from an absolute local path or a `data:` URI.
+
+If the result card first says that image data is missing and the image appears later, update to
+`ui://jewel-buddy/results/v5.html`. WorkBuddy sends tool-input before tool-result: input contains only
+paths, while the result contains validated image bytes. Result UI v5 treats input as a waiting state
+and renders the gallery only after the real tool-result arrives.
 
 The original interview card will not turn into a gallery: WorkBuddy pushes a tool result only to the
 widget associated with that tool call. A second, visually consistent result card should appear in the
@@ -154,8 +161,8 @@ unsupported inputs rather than weakening the file checks.
 
 ## Result image is visible but the title or controls are clipped
 
-Update to the build that exposes `ui://jewel-buddy/results/v4.html`, run `/reload-plugins` once, and
-create a new result card. Result UI v4 reports the maximum body/document content size instead of the
+Update to the build that exposes `ui://jewel-buddy/results/v5.html`, run `/reload-plugins` once, and
+create a new result card. Result UI v5 reports the maximum body/document content size instead of the
 current iframe viewport, bounds the image stage, and omits the disabled navigation row for a
 single-image result. Existing v1/v2 cards are immutable and will remain clipped.
 
@@ -165,7 +172,7 @@ Run `/reload-plugins` only after installation, update, or source changes, then s
 conversation. If developing with `--plugin-dir`, stop and restart that process when the old MCP
 remains registered. After changing an existing Widget contract, increment that resource URI and
 update its tests/docs so the host cannot reuse cached HTML. The interview remains
-`interview/v5.html`; the result gallery has its own cache boundary at `results/v4.html`.
+`interview/v5.html`; the result gallery has its own cache boundary at `results/v5.html`.
 
 ## Plugin name conflict
 

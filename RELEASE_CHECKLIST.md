@@ -1,4 +1,4 @@
-# Jewel Buddy 0.3.3 Release Checklist
+# Jewel Buddy 0.3.4 Release Checklist
 
 Use this checklist once for a GitHub release. It is not an installer and does not create a
 recurring task.
@@ -6,7 +6,7 @@ recurring task.
 ## Repository
 
 - [ ] `package.json`, marketplace metadata, plugin manifest, and MCP `serverInfo.version` all say
-      `0.3.3`.
+      `0.3.4`.
 - [ ] `.codebuddy-plugin/marketplace.json` is tracked and points to `./plugins/jewel-buddy`.
 - [ ] The public plugin contains exactly one Skill: `plugins/jewel-buddy/skills/jewel-buddy`.
 - [ ] `git status --short --ignored` shows local `.workbuddy/` and `generated-images/` only as
@@ -42,9 +42,11 @@ pass/fail message; an interrupted process is not a pass.
 6. Verify every submission produces one short user message, keeps the structured answers out of the
    visible conversation, and automatically advances.
 7. Confirm the brief and verify a real image tool returns the requested number of readable images.
-8. Verify the agent calls `show_jewel_results` with those real paths and a second inline result card
-   renders the same count.
-9. Run one image-to-image case and drag the comparison divider from 0 to 100; confirm the left/right
+8. Verify native image/file presentation completes before `show_jewel_results`; generation,
+   presentation, and result UI must not run in one parallel tool batch.
+9. Verify the result tool's input phase shows only “正在等待图片数据…”, then its tool-result renders
+   the same real image count without ever showing “图片结果不完整”.
+10. Run one image-to-image case and drag the comparison divider from 0 to 100; confirm the left/right
    source and result labels match the visible images.
 
 For gray placeholders, stale cards, duplicate connectors, identity mismatches, port conflicts, or
@@ -54,7 +56,7 @@ missing image tools, stop and follow [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOT
 
 - [ ] Update `CHANGELOG.md` and release notes.
 - [ ] Commit the reviewed worktree.
-- [ ] Tag the exact commit as `v0.3.3` and push the tag.
+- [ ] Tag the exact commit as `v0.3.4` and push the tag.
 - [ ] Confirm the GitHub Actions Release workflow passes on macOS and Windows.
 - [ ] Download the generated ZIP, verify its SHA-256 file, and inspect the archive contents before
       sharing the release.

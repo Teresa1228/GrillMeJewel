@@ -13,9 +13,12 @@ generation tool available in the current WorkBuddy session to generate the reque
 
 ## Visible Response Contract
 
-- The Apps UI card is the primary and only user-facing response during interview rounds and final
-  result delivery. Place each UI tool call first in a normal visible assistant response, with no
-  prose preamble. If the host requires text before a tool call, use at most one short sentence.
+- The Apps UI card is the primary and only user-facing response during interview rounds. Place each
+  interview UI tool call first in a normal visible assistant response, with no prose preamble. If the
+  host requires text before a tool call, use at most one short sentence.
+- For final delivery, complete WorkBuddy's native image or file presentation first, wait for that
+  presentation to succeed, and only then call `show_jewel_results` as the last presentation step.
+  Show the images first and the result UI second; add no explanatory prose between them.
 - Never invoke either UI tool from analysis, reasoning, or hidden planning. Do not put a roadmap,
   question list, answer recap, brief, or usage instructions before or after the card.
 - After the UI tool succeeds, end the turn immediately. Do not restate the card's questions, options,
@@ -51,9 +54,14 @@ generation tool available in the current WorkBuddy session to generate the reque
 7. After confirmation, read `references/image2-generation.md`, compile one production prompt per
    requested design, discover the real image-generation tool available in WorkBuddy, and invoke it.
    Prefer a native image tool or an installed image-generation MCP. The confirmed brief is the
-   source of truth; do not resume interviewing during generation and never invent a tool result.
-8. Inspect the successful image tool result. When it returns real local absolute paths or PNG/JPEG/WebP
-   data URIs, call `show_jewel_results` exactly once with all requested results. Use
+   source of truth; do not resume interviewing during generation and never invent a tool result. Wait
+   until every image-generation tool call has returned successfully before preparing the result UI.
+8. Inspect the completed image tool result and verify that every requested image has a real local
+   absolute path or PNG/JPEG/WebP data URI. Never call `show_jewel_results` in parallel with image
+   generation, in the same tool-call batch, while a provider reports queued or pending, or before all
+   requested image data exists. Complete the host's native image presentation and wait for success;
+   if the host requires a separate file-presentation tool, call and finish it before
+   `show_jewel_results`. Only then call `show_jewel_results` exactly once with all results. Use
    `mode: text_to_image` for generated images alone. Use `mode: image_to_image` only when both the
    user's real source image and each generated result are available locally; pass `source_path` and
    `result_path` so the UI can render a draggable before/after comparison. Do not pass a URL, invent
@@ -94,6 +102,10 @@ generation tool available in the current WorkBuddy session to generate the reque
 - Confirm the selected WorkBuddy image tool returned the requested number of readable image assets. If image generation
   is unavailable or fails, report the real blocker and keep the confirmed brief for retry; do not
   present a text brief as completed visual delivery.
+- Confirm every image-generation call completed before `show_jewel_results` was invoked, with no
+  parallel or same-batch result UI call.
+- Confirm native image or file presentation completed before `show_jewel_results`, so the user sees
+  the real image before the result UI opens.
 - Confirm `show_jewel_results` received the same real image count whenever usable local paths or data
   URIs were returned. For image-to-image work, confirm every result item includes its matching source
   and result image so the comparison slider is truthful.

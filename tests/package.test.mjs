@@ -22,7 +22,7 @@ test("WorkBuddy plugin manifest and MCP identity are aligned", () => {
   const manifest = JSON.parse(readFileSync(resolve(PLUGIN, ".codebuddy-plugin/plugin.json"), "utf8"));
   const mcp = JSON.parse(readFileSync(resolve(PLUGIN, ".mcp.json"), "utf8"));
   assert.equal(manifest.name, "jewel-buddy");
-  assert.equal(manifest.version, "0.3.3");
+  assert.equal(manifest.version, "0.3.4");
   assert.equal(rootPackage.version, manifest.version);
   assert.equal(marketplace.version, manifest.version);
   assert.equal(marketplace.plugins[0].version, manifest.version);
@@ -58,6 +58,9 @@ test("the plugin contains one WorkBuddy skill with interview and image handoff r
   assert.match(skill, /primary and only user-facing response/i);
   assert.match(skill, /never (?:invoke|emit).*analysis, reasoning, or hidden planning/i);
   assert.match(skill, /end the turn immediately/i);
+  assert.match(skill, /never (?:call|invoke) `show_jewel_results` in parallel/i);
+  assert.match(skill, /wait\s+until.*image-generation tool.*returned successfully/is);
+  assert.match(skill, /native image.*presentation.*before.*`show_jewel_results`/is);
   assert.doesNotMatch(skill, /After submission, summarize/);
   assert.doesNotMatch(skill, /Return the final brief in Markdown under/);
   assert.doesNotMatch(skill, /\$imagegen|gpt-image-2|Codex/);

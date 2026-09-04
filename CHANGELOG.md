@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.4 - 2026-09-04
+
+- Fixed a result lifecycle race where WorkBuddy's path-only tool-input was mistaken for the completed
+  gallery and briefly showed “图片结果不完整” before the real tool-result delivered image data.
+- Result UI now shows a neutral waiting state for tool-input and renders images only from the validated
+  tool-result. The result resource cache boundary is now `results/v5.html`.
+- Required every result item to supply a real path or image data URI at schema level, while retaining
+  the existing file, MIME, size, and embedded-data validation.
+- Enforced serial delivery: image generation must finish, then WorkBuddy native image/file presentation
+  must succeed, and only then may `show_jewel_results` open the final UI. These steps must never share a
+  parallel tool-call batch.
+
 ## 0.3.3 - 2026-09-04
 
 - Made the Apps UI card the primary visible response for every interview and result turn. The Skill

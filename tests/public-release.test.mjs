@@ -53,6 +53,6 @@ test("troubleshooting records the high-frequency WorkBuddy failure modes", () =>
   assert.match(guide, /no separate Widget frontend server/);
   assert.match(guide, /increment that resource URI/);
   assert.match(guide, /images\[\]\.localPath/);
-  assert.match(guide, /results\/v4\.html/);
+  assert.match(guide, /results\/v5\.html/);
   assert.match(guide, /Apps UI appears inside collapsed deep thinking/);
 });

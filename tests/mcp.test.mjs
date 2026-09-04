@@ -11,7 +11,7 @@ const SERVER = resolve(ROOT, "plugins/jewel-buddy/mcp/server.mjs");
 const HTML = resolve(ROOT, "plugins/jewel-buddy/mcp/interview.html");
 const SERVER_ID = "jewel-buddy";
 const RESOURCE_URI = "ui://jewel-buddy/interview/v5.html";
-const RESULTS_URI = "ui://jewel-buddy/results/v4.html";
+const RESULTS_URI = "ui://jewel-buddy/results/v5.html";
 const TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
 function transact(messages, cwd = ROOT) {
@@ -58,6 +58,12 @@ function extractClass(source, className) {
   throw new Error(`${className} is incomplete`);
 }
 
+function extractInlineScript(source) {
+  const match = source.match(/<script type="module">\s*([\s\S]*?)\s*<\/script>/);
+  assert.ok(match, "inline widget script is missing");
+  return match[1];
+}
+
 test("MCP exposes interview and result tools through versioned Apps UI resources", () => {
   const responses = transact([
     { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } } },
@@ -74,8 +80,14 @@ test("MCP exposes interview and result tools through versioned Apps UI resources
   assert.match(responses[1].result.tools[0].description, /never from reasoning or analysis/i);
   assert.match(responses[1].result.tools[0].description, /end the turn/i);
   assert.match(responses[1].result.tools[1].description, /draggable before\/after comparison/);
-  assert.match(responses[1].result.tools[1].description, /primary user-facing response/i);
+  assert.match(responses[1].result.tools[1].description, /final result UI/i);
   assert.match(responses[1].result.tools[1].description, /never from reasoning or analysis/i);
+  assert.match(responses[1].result.tools[1].description, /never.*in parallel.*image generation/i);
+  assert.match(responses[1].result.tools[1].description, /native image or file presentation.*before this tool/is);
+  assert.deepEqual(responses[1].result.tools[1].inputSchema.properties.items.items.anyOf, [
+    { required: ["result_path"] },
+    { required: ["result_data_uri"] },
+  ]);
   assert.equal(responses[2].result.resources.length, 2);
   assert.equal(responses[1].result.tools[0]._meta.ui.resourceUri, RESOURCE_URI);
   assert.equal(responses[1].result.tools[0]._meta.ui.launchSurface, "inline");
@@ -176,7 +188,7 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   t.after(() => child.kill());
 
   const health = await fetch(`${endpoint}/health`).then((response) => response.json());
-  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.3" });
+  assert.deepEqual(health, { ok: true, name: SERVER_ID, version: "0.3.4" });
 
   const post = (message) => fetch(`${endpoint}/mcp`, {
     method: "POST",
@@ -209,7 +221,7 @@ test("WorkBuddy can inspect the same MCP App over Streamable HTTP", async (t) =>
   assert.match(view.result.contents[0].text, /正在载入访谈问题/);
 
   const doctor = spawnSync(process.execPath, [
-    SERVER, "--inspect", `${endpoint}/mcp`, "--expect-version", "0.3.3",
+    SERVER, "--inspect", `${endpoint}/mcp`, "--expect-version", "0.3.4",
   ], { cwd: ROOT, encoding: "utf8" });
   assert.equal(doctor.status, 0, doctor.stderr);
   assert.match(doctor.stdout, /"tools":2/);
@@ -403,6 +415,61 @@ test("Apps UI sends WorkBuddy message metadata inside ui/message params", () => 
   assert.equal(posted[1].method, "ui/update-model-context");
   assert.equal(posted[1].params.content[0].text, "hidden state");
   assert.equal(posted[1].params.structuredContent.round, 1);
+});
+
+test("result UI waits for tool-result image data instead of rendering path-only tool input", () => {
+  const html = readFileSync(HTML, "utf8");
+  let receiveMessage;
+  const root = { innerHTML: '<section class="loading"><div>正在载入访谈问题…</div></section>' };
+  const document = {
+    getElementById(id) { return id === "app" ? root : null; },
+    body: { scrollWidth: 800, scrollHeight: 360 },
+    documentElement: { scrollWidth: 800, scrollHeight: 360, style: {} },
+  };
+  const window = {
+    parent: { postMessage() {} },
+    innerWidth: 800,
+    addEventListener(type, listener) { if (type === "message") receiveMessage = listener; },
+  };
+  let timeoutCallback;
+  const context = vm.createContext({
+    window,
+    document,
+    CSS: { escape: (value) => value },
+    setTimeout(callback) { timeoutCallback = callback; return 1; },
+    clearTimeout() {},
+    requestAnimationFrame(callback) { callback(); },
+    ResizeObserver: class { observe() {} },
+  });
+  vm.runInContext(extractInlineScript(html), context);
+
+  receiveMessage({ data: {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-input",
+    params: { arguments: {
+      title: "待完成结果",
+      mode: "text_to_image",
+      items: [{ id: "result_one", title: "结果一", result_path: "/tmp/not-ready.png" }],
+    } },
+  } });
+
+  assert.doesNotMatch(root.innerHTML, /图片结果不完整/);
+  assert.match(root.innerHTML, /等待图片数据/);
+  timeoutCallback();
+  assert.match(root.innerHTML, /等待图片数据/);
+
+  receiveMessage({ data: {
+    jsonrpc: "2.0",
+    method: "ui/notifications/tool-result",
+    params: { structuredContent: { gallery: {
+      title: "完整结果",
+      mode: "text_to_image",
+      items: [{ id: "result_one", title: "结果一", resultDataUri: TINY_PNG }],
+    } }, content: [] },
+  } });
+
+  assert.doesNotMatch(root.innerHTML, /等待图片数据|图片结果不完整/);
+  assert.match(root.innerHTML, /data:image\/png;base64/);
 });
 
 test("Apps UI accepts WorkBuddy preload messages without a trusted event source", async () => {

@@ -25,10 +25,11 @@ vague user idea
   -> Jewel Buddy Skill identifies unresolved decisions
   -> ask_grill_me_questions returns structuredContent
   -> sandboxed Apps UI shows one question at a time
-  -> ui/message writes a readable summary plus stable ids into the same conversation
+  -> ui/update-model-context preserves structured answers; ui/message sends one short continuation
   -> Skill assembles and confirms the brief
   -> WorkBuddy invokes an available real image-generation tool
-  -> Skill passes returned localPath values to show_jewel_results
+  -> WorkBuddy completes native image/file presentation
+  -> Skill passes verified localPath values to show_jewel_results only after native presentation
   -> a new Apps UI result card renders a gallery or before/after slider
 ```
 
@@ -47,10 +48,10 @@ no server database or cache is used.
 - Resource MIME: `text/html;profile=mcp-app`.
 - MCP server identity and URI authority: `jewel-buddy`.
 - Interview resource URI: `ui://jewel-buddy/interview/v5.html`.
-- Result resource URI: `ui://jewel-buddy/results/v4.html`.
+- Result resource URI: `ui://jewel-buddy/results/v5.html`.
 
-The verified interview stays on v4; the result surface is v3 so WorkBuddy cannot reuse the earlier
-content-index-only or oversized gallery. A generated image tool result is not broadcast to an
+The verified interview is `interview/v5`; the result surface is `results/v5` so WorkBuddy cannot
+reuse an earlier content-index-only, oversized, or input-before-result gallery. A generated image tool result is not broadcast to an
 older interview iframe. `show_jewel_results` therefore creates a new result card in the same
 conversation, which is the reliable MCP Apps tool-result model.
 

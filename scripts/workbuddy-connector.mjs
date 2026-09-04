@@ -15,7 +15,7 @@ import {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CONNECTOR_NAME = "jewel-buddy";
 const DEFAULT_HTTP_URL = "http://127.0.0.1:39528/mcp";
-const INSTALLER_VERSION = "0.3.3";
+const INSTALLER_VERSION = "0.3.4";
 const SKILL_MARKER = ".jewel-buddy-workbuddy.json";
 const CLI_TIMEOUT_MS = 45_000;
 

@@ -7,10 +7,10 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 const SERVER_NAME = "jewel-buddy";
-const SERVER_VERSION = "0.3.3";
+const SERVER_VERSION = "0.3.4";
 const MCP_VERSION = "2025-11-25";
 const RESOURCE_URI = "ui://jewel-buddy/interview/v5.html";
-const RESULTS_URI = "ui://jewel-buddy/results/v4.html";
+const RESULTS_URI = "ui://jewel-buddy/results/v5.html";
 const HTML_PATH = fileURLToPath(new URL("./interview.html", import.meta.url));
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 // WorkBuddy forwards structuredContent, but not image content blocks, to the Apps iframe.
@@ -194,7 +194,7 @@ function imageInputSchema(prefix) {
 function resultToolDescriptor() {
   return {
     name: "show_jewel_results",
-    description: "Render real jewelry images as the primary user-facing response after an image-generation tool succeeds. Call it first, with no prose preamble, from a normal visible assistant response; never from reasoning or analysis. Call it only with generated result paths inside the current workspace generated-images directory or data URIs actually returned by that tool. Use text_to_image for generated results alone, or image_to_image with both source and result for a draggable before/after comparison. After this tool succeeds, end the turn without duplicating the gallery, images, or brief. This tool only reads and presents images; it does not generate, upload, or store them.",
+    description: "Render completed jewelry images in the final result UI. Never call this tool in parallel with image generation, in the same tool-call batch, while generation is queued or pending, or before every requested image tool call has returned successfully with a real path or data URI. WorkBuddy's native image or file presentation must also finish successfully before this tool is called, so users see the images first and this UI second. Invoke it from a normal visible assistant response, never from reasoning or analysis. Use text_to_image for generated results alone, or image_to_image with both source and result for a draggable before/after comparison. After this tool succeeds, end the turn without duplicating the gallery, images, or brief. This tool only reads and presents images; it does not generate, upload, or store them.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -208,6 +208,10 @@ function resultToolDescriptor() {
             type: "object",
             additionalProperties: false,
             required: ["id", "title"],
+            anyOf: [
+              { required: ["result_path"] },
+              { required: ["result_data_uri"] },
+            ],
             properties: {
               id: { type: "string", pattern: "^[a-z][a-z0-9_-]{0,47}$" },
               title: { type: "string", minLength: 1, maxLength: 80 },

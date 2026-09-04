@@ -93,7 +93,7 @@
 
     let active=null,index=0,answers={},otherText={},submitting=false,received=false,galleryState=null,galleryIndex=0;
     const root=document.getElementById("app");
-    const app=new WorkBuddyBridge({name:"jewel-buddy-interview",version:"0.3.3",autoResize:true});
+    const app=new WorkBuddyBridge({name:"jewel-buddy-interview",version:"0.3.4",autoResize:true});
     const parseInterview=(value,depth=0)=>{if(depth>8||value==null)return null;if(typeof value==="string"){try{return parseInterview(JSON.parse(value),depth+1)}catch{return null}}if(Array.isArray(value)){for(const item of value){const found=parseInterview(item,depth+1);if(found)return found}return null}if(typeof value!=="object")return null;if(value.interview?.questions)return value.interview;if(value.structuredContent)return parseInterview(value.structuredContent,depth+1);if(value.result)return parseInterview(value.result,depth+1);if(value.content)return parseInterview(value.content,depth+1);if(value.text)return parseInterview(value.text,depth+1);return null};
     const parseGallery=(value,depth=0)=>{if(depth>8||value==null)return null;if(typeof value==="string"){try{return parseGallery(JSON.parse(value),depth+1)}catch{return null}}if(Array.isArray(value)){for(const item of value){const found=parseGallery(item,depth+1);if(found)return found}return null}if(typeof value!=="object")return null;if(value.structuredContent?.gallery?.items)return{gallery:value.structuredContent.gallery,content:Array.isArray(value.content)?value.content:[]};if(value.gallery?.items)return{gallery:value.gallery,content:Array.isArray(value.content)?value.content:[]};if(value.result)return parseGallery(value.result,depth+1);return null};
     const toolError=(value,depth=0)=>{if(depth>8||value==null)return "";if(typeof value==="string"){try{return toolError(JSON.parse(value),depth+1)}catch{return ""}}if(Array.isArray(value)){for(const item of value){const found=toolError(item,depth+1);if(found)return found}return ""}if(typeof value!=="object")return "";if(value.isError){const message=Array.isArray(value.content)?value.content.find(item=>item?.type==="text")?.text:"";return message||value.error?.message||"表单载入失败。"}for(const key of ["result","structuredContent","content","text"]){const found=toolError(value[key],depth+1);if(found)return found}return ""};
@@ -168,7 +168,17 @@
     function accept(value){const candidate=parseInterview(value);if(candidate){if(!Array.isArray(candidate.questions)||candidate.questions.length<1){terminal("访谈问题不完整，请重新发起。");return true}received=true;galleryState=null;active=candidate;index=0;answers={};otherText={};submitting=false;render();return true}const gallery=parseGallery(value);if(!gallery)return false;if(!Array.isArray(gallery.gallery.items)||gallery.gallery.items.length<1){terminal("图片结果不完整，请让主对话重新展示。");return true}received=true;active=null;galleryState=gallery;galleryIndex=0;renderGallery();return true}
     const applyTheme=(theme)=>{if(!theme)return;document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme};
     app.ontoolresult=(result)=>{const message=toolError(result);if(message){terminal(message);return}if(!accept(result))terminal("访谈问题不完整，请重新发起。")};
-    app.ontoolinput=(input)=>accept(input?.arguments?.interview??input?.arguments??input);
+    app.ontoolinput=(input)=>{
+      const value=input?.arguments??input;
+      const interview=value?.interview?.questions?value.interview:(value?.questions?value:parseInterview(value));
+      if(interview){accept({interview});return}
+      const gallery=value?.gallery??value;
+      if(gallery&&Array.isArray(gallery.items)&&["text_to_image","image_to_image"].includes(gallery.mode)&&!galleryState){
+        received=true;
+        root.innerHTML='<section class="loading"><div class="mark">GMJ</div><div>正在等待图片数据…</div></section>';
+        app.reportSize();
+      }
+    };
     app.onhostcontextchanged=(context)=>applyTheme(context?.theme);
     app.connect().then(()=>applyTheme(app.hostContext?.theme)).catch(error=>terminal(`无法连接 WorkBuddy Apps UI：${error?.message||error}`));
     setTimeout(()=>{if(!received)terminal("没有收到工具结果，请重新调用 Jewel Buddy。")},9000);

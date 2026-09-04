@@ -4,7 +4,7 @@
   <img src="plugins/jewel-buddy/assets/brand/logo-header.webp" alt="苏哇科技 GrillMeJewel" width="176">
 </p>
 
-Jewel Buddy `0.3.3` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
+Jewel Buddy `0.3.4` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel) 的 WorkBuddy / CodeBuddy 发行版。当前 WorkBuddy 预览版发布在 [`Teresa1228/GrillMeJewel` 的 `codex/workbuddy-port` 分支](https://github.com/Teresa1228/GrillMeJewel/tree/codex/workbuddy-port)。它用内嵌 MCP Apps 表单完成四轮珠宝需求访谈、单独确认 brief，再由主对话调用当前已授权的真实图片工具。
 
 ![Jewel Buddy 内嵌访谈界面](docs/images/apps-ui-interview.png)
 
@@ -27,8 +27,9 @@ Jewel Buddy `0.3.3` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
   → app.updateModelContext 隐式回写完整结构化答案
   → app.sendMessage(send) 只显示一句简短续接消息，并立即唤起 agent
   → agent 继续访谈；最终确认后调用真实图片生成工具
-  → 图片由 WorkBuddy 主对话原生展示
-  → agent 再调用 show_jewel_results，把真实结果回显为同风格 Apps UI 画廊
+  → 等待生成完成并取得全部真实图片路径或 data URI
+  → 先完成 WorkBuddy 主对话的原生图片/文件展示
+  → 原生展示成功后，最后调用 show_jewel_results 回显 Apps UI 画廊
 ```
 
 核心代码在：
@@ -153,7 +154,7 @@ await app.sendMessage({
 
 ## 图片结果闭环
 
-真实图片工具成功后，主对话调用同一 MCP 的 `show_jewel_results`。它只读取图片工具明确返回且位于当前工作区 `generated-images/` 的本地结果路径，或接收其返回的 `data:` 图片；不会请求图片供应商、上传文件或保存副本。结果同时作为标准 MCP image content 和受大小限制的 `structuredContent` 图片数据回传：前者供主对话原生展示，后者兼容 WorkBuddy 只把 `structuredContent` 交给 Apps iframe 的行为。两条结果都不包含本地路径。结果卡 v4 限制图片展示高度，并在单图时省略无意义的翻页栏，避免宿主高度封顶时裁掉标题与说明。
+真实图片工具成功并返回全部图片后，主对话必须先完成 WorkBuddy 原生图片/文件展示，确认成功后才能调用同一 MCP 的 `show_jewel_results`。不得把图片生成、原生展示和结果 UI 放进同一个并行工具批次。结果工具只读取图片工具明确返回且位于当前工作区 `generated-images/` 的本地结果路径，或接收其返回的 `data:` 图片；不会请求图片供应商、上传文件或保存副本。结果同时作为标准 MCP image content 和受大小限制的 `structuredContent` 图片数据回传：前者供主对话原生展示，后者兼容 WorkBuddy 只把 `structuredContent` 交给 Apps iframe 的行为。两条结果都不包含本地路径。结果卡 v5 在 tool-input 阶段只显示等待态，只有含真实图片数据的 tool-result 才渲染画廊，避免先报“无图片数据”再补图。
 
 - 文生图：显示结果画廊；多张图用“上一张 / 下一张”浏览。
 - 图生图：每个结果同时显示原图和生成图，可拖动中间分隔线比较变化。

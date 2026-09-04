@@ -417,6 +417,11 @@ test("Apps UI sends WorkBuddy message metadata inside ui/message params", () => 
   assert.equal(posted[1].params.structuredContent.round, 1);
 });
 
+test("confirmation handoff orders native image presentation before the result UI", () => {
+  const html = readFileSync(HTML, "utf8");
+  assert.match(html, /等待全部图片成功后先在主对话展示图片，再调用 show_jewel_results/);
+});
+
 test("result UI waits for tool-result image data instead of rendering path-only tool input", () => {
   const html = readFileSync(HTML, "utf8");
   let receiveMessage;

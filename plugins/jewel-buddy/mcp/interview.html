@@ -118,7 +118,7 @@
       if(submitButton)submitButton.disabled=true;
       const payload={schemaVersion:2,round:active.round,stage:active.stage,stageLabel:active.stageLabel,minimumDiscoveryRounds:active.minimumDiscoveryRounds,answers:active.questions.map(q=>({id:q.id,label:q.label,value:answers[q.id]??(q.type==="multi"?[]:""),displayValue:answerLabel(q)||"未填写",...(otherText[q.id]?{otherText:otherText[q.id]}:{})}))};
       const instruction=active.stage==="confirmation"
-        ?"读取确认结果；已确认时按 brief 调用真实图片生成工具，成功后用真实结果调用 show_jewel_results。要求修改时先修订并再次确认。"
+        ?"读取确认结果；已确认时按 brief 调用真实图片生成工具，等待全部图片成功后先在主对话展示图片，再调用 show_jewel_results。要求修改时先修订并再次确认。"
         :"保留本轮回答，直接调用 ask_grill_me_questions 展示下一个未完成阶段；不要用正文复述答案、题目或流程。";
       const context=`Jewel Buddy structured submission.\n${JSON.stringify(payload)}\nInstruction: ${instruction}`;
       const message=active.stage==="confirmation"

@@ -13,7 +13,7 @@ test("README and install guide document the WorkBuddy plugin flow", () => {
     assert.match(content, /workbuddy\.cn\/docs\/cli\/mcp-apps/);
   }
   assert.match(readme, /app\.sendMessage/);
-  assert.match(readme, /\/goal 一次性安装并验证 Jewel Buddy for WorkBuddy/);
+  assert.match(readme, /一次性安装并验证 Jewel Buddy for WorkBuddy/);
   assert.match(readme, /不要创建定时任务/);
   assert.match(readme, /Teresa1228\/GrillMeJewel/);
   assert.match(readme, /codex\/workbuddy-port/);
@@ -40,6 +40,27 @@ test("README and install guide document the WorkBuddy plugin flow", () => {
   assert.match(install, /新建\s*对话/);
   assert.match(install, /信任/);
   assert.match(install, /不要回退到原生对话卡片/);
+});
+
+test("README exposes a Codex-style one-shot WorkBuddy update path", () => {
+  const readme = readFileSync(resolve(ROOT, "README.md"), "utf8");
+  const update = readFileSync(resolve(ROOT, "UPDATE.md"), "utf8");
+
+  assert.match(readme, /## 一句话安装/);
+  assert.match(readme, /## 一句话更新/);
+  assert.match(readme, /Read https:\/\/raw\.githubusercontent\.com\/Teresa1228\/GrillMeJewel\/codex\/workbuddy-port\/UPDATE\.md/);
+  assert.match(readme, /请阅读 https:\/\/raw\.githubusercontent\.com\/Teresa1228\/GrillMeJewel\/codex\/workbuddy-port\/UPDATE\.md/);
+  assert.match(readme, /已有安装使用 \[UPDATE\.md\]\(UPDATE\.md\)/);
+  assert.match(update, /git status --short/);
+  assert.match(update, /switch --detach origin\/codex\/workbuddy-port/);
+  assert.match(update, /merge --ff-only origin\/codex\/workbuddy-port/);
+  assert.match(update, /npm run install:workbuddy/);
+  assert.match(update, /npm run doctor:workbuddy/);
+  assert.match(update, /2\/2 tools, 2 resources/);
+  assert.match(update, /完全退出并重新打开 WorkBuddy/);
+  assert.match(update, /不删除对话、brief、生成图片/);
+  assert.match(update, /不要创建定时任务/);
+  assert.match(update, /已恢复更新前版本/);
 });
 
 test("troubleshooting records the high-frequency WorkBuddy failure modes", () => {

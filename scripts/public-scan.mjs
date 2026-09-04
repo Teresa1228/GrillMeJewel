@@ -24,7 +24,6 @@ const forbiddenNames = [
   /(?:^|\/)id_(?:rsa|ed25519)(?:\.pub)?$/i,
   /^\.agents\/plugins\/marketplace\.json$/,
   /(?:^|\/)\.codex-plugin(?:\/|$)/,
-  /^UPDATE\.md$/,
   /^scripts\/gmj\.mjs$/,
   /^tests\/lifecycle\.test\.mjs$/,
   /^design-qa\.md$/,

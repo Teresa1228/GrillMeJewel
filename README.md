@@ -8,15 +8,33 @@ Jewel Buddy `0.3.4` 是 [GrillMeJewel](https://github.com/yuyou-dev/GrillMeJewel
 
 ![Jewel Buddy 内嵌访谈界面](docs/images/apps-ui-interview.png)
 
-## 一次性安装目标
+## 一句话安装
 
-在 WorkBuddy **新建一个对话，只发送一次**下面的目标。它不是定时任务，不应创建自动化，也不应循环安装：
+在 WorkBuddy 中新建对话，粘贴以下任一目标。每个目标只发送一次；不要创建定时任务、自动化或循环执行：
 
 ```text
-/goal 一次性安装并验证 Jewel Buddy for WorkBuddy：完整阅读 https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/INSTALL.md，严格按其中步骤把该分支安装到稳定的本地目录并运行 npm run install:workbuddy。安装器必须注册由操作系统托管、登录后自动恢复的本地 jewel-buddy MCP；不要创建定时任务、外部服务或第二个同名连接器。安装后告诉我前往 WorkBuddy → 连接器 → 自定义连接，信任新安装的 jewel-buddy MCP 并开启开关；首次安装后完整重启 WorkBuddy，再由我在安装目录运行 npm run doctor:workbuddy，四项均为 ✓ 才算验证完成。不要在 Apps UI 未出现时回退到原生对话卡片。失败时返回原始错误和停止位置。
+/goal Read https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/INSTALL.md to install and verify Jewel Buddy for WorkBuddy once, then tell me how to trust, enable, and fully restart it.
 ```
 
-完整自动安装过程见 [INSTALL.md](INSTALL.md)。
+```text
+/goal 请阅读 https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/INSTALL.md，一次性安装并验证 Jewel Buddy for WorkBuddy，然后告诉我如何信任、开启并完整重启它。
+```
+
+WorkBuddy 会完成环境检查、安装和健康检查，再提示你完成宿主必须由用户执行的信任与重启。完整步骤见 [INSTALL.md](INSTALL.md)。
+
+## 一句话更新
+
+已经安装过 Jewel Buddy？在 WorkBuddy 中新建对话，粘贴以下任一目标：
+
+```text
+/goal Read https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/UPDATE.md to safely update and verify my existing Jewel Buddy for WorkBuddy installation once, preserve my work and unrelated connectors, and tell me when to fully restart WorkBuddy.
+```
+
+```text
+/goal 请阅读 https://raw.githubusercontent.com/Teresa1228/GrillMeJewel/codex/workbuddy-port/UPDATE.md，一次性安全更新并验证我现有的 Jewel Buddy for WorkBuddy，保留我的创作内容和其他连接器，并告诉我何时需要完全重启 WorkBuddy。
+```
+
+更新流程只快进可信分支并重跑同一个幂等安装器，不删除对话、brief、生成图片或其他连接器。首次安装使用 [INSTALL.md](INSTALL.md)，已有安装使用 [UPDATE.md](UPDATE.md)。
 
 ## 关键链路
 
@@ -171,4 +189,4 @@ await app.sendMessage({
 - 访谈状态以主对话为事实源，不写数据库、不上传附件。
 - README 延续 Codex 发行版原有的苏哇科技动态标识；运行时访谈 UI 不额外添加旧版没有的品牌装饰。品牌使用边界见 `TRADEMARKS.md`。
 
-完整安装与验收步骤见 [INSTALL.md](INSTALL.md)。
+首次安装与验收步骤见 [INSTALL.md](INSTALL.md)，安全更新步骤见 [UPDATE.md](UPDATE.md)。
